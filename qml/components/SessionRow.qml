@@ -58,9 +58,9 @@ Item {
                 }
             }
 
-            Menu {
+            StyledMenu {
                 id: ctxMenu
-                MenuItem {
+                StyledMenuItem {
                     text: "Hide globally"
                     onTriggered: {
                         if (appController && sessionObject) {
@@ -68,7 +68,7 @@ Item {
                         }
                     }
                 }
-                MenuItem {
+                StyledMenuItem {
                     text: "Hide on this device"
                     onTriggered: {
                         if (appController && sessionObject) {

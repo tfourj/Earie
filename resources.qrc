@@ -4,6 +4,8 @@
         <file>qml/components/DeviceCell.qml</file>
         <file>qml/components/DeviceMasterRow.qml</file>
         <file>qml/components/SessionRow.qml</file>
+        <file>qml/components/StyledMenu.qml</file>
+        <file>qml/components/StyledMenuItem.qml</file>
         <file>qml/styles/Theme.qml</file>
         <file>qml/styles/SliderStyle.qml</file>
         <file>assets/vol_0.ico</file>

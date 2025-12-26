@@ -71,15 +71,15 @@ Item {
 
                 onClicked: settingsMenu.open()
 
-                Menu {
+                StyledMenu {
                     id: settingsMenu
                     y: settingsBtn.height
 
-                    MenuItem {
+                    StyledMenuItem {
                         text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
                         onTriggered: if (appController) appController.showSystemSessions = !appController.showSystemSessions
                     }
-                    MenuItem {
+                    StyledMenuItem {
                         text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
                         onTriggered: if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
                     }
