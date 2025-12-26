@@ -16,6 +16,7 @@ class AudioDevice final : public QObject
     Q_PROPERTY(bool isDefault READ isDefault NOTIFY changed)
     Q_PROPERTY(double volume READ volume NOTIFY changed) // 0..1
     Q_PROPERTY(bool muted READ muted NOTIFY changed)
+    Q_PROPERTY(double peak READ peak NOTIFY changed) // 0..1
     Q_PROPERTY(QAbstractItemModel* sessionsModel READ sessionsModel CONSTANT)
 public:
     explicit AudioDevice(AudioBackend *backend, const QString &id, const QString &name, QObject *parent = nullptr);
@@ -25,6 +26,7 @@ public:
     bool isDefault() const { return m_isDefault; }
     double volume() const { return m_volume; }
     bool muted() const { return m_muted; }
+    double peak() const { return m_peak; }
 
     // QML-facing model (avoid moc needing SessionListModel complete type)
     QAbstractItemModel *sessionsModel() const { return static_cast<QAbstractItemModel *>(m_sessions); }
@@ -35,6 +37,7 @@ public:
     void setIsDefault(bool d);
     void setVolumeInternal(double v);
     void setMutedInternal(bool m);
+    void setPeakInternal(double p);
 
 public slots:
     Q_INVOKABLE void setVolume(double v);
@@ -53,6 +56,7 @@ private:
     bool m_isDefault = false;
     double m_volume = 1.0;
     bool m_muted = false;
+    double m_peak = 0.0;
     SessionListModel *m_sessions = nullptr;
 
     QTimer m_volumeCommitTimer;

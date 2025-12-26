@@ -52,6 +52,15 @@ void AudioDevice::setMutedInternal(bool m)
     emit changed();
 }
 
+void AudioDevice::setPeakInternal(double p)
+{
+    p = qBound(0.0, p, 1.0);
+    if (qFuzzyCompare(m_peak, p))
+        return;
+    m_peak = p;
+    emit changed();
+}
+
 void AudioDevice::setVolume(double v)
 {
     m_pendingVolume = qBound(0.0, v, 1.0);

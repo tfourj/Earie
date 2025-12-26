@@ -65,6 +65,15 @@ void AudioSession::setActiveInternal(bool a)
     emit changed();
 }
 
+void AudioSession::setPeakInternal(double p)
+{
+    p = qBound(0.0, p, 1.0);
+    if (qFuzzyCompare(m_peak, p))
+        return;
+    m_peak = p;
+    emit changed();
+}
+
 void AudioSession::setVolume(double v)
 {
     // Coalesce rapid slider drags to avoid flooding COM calls (and potential instability).

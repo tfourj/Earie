@@ -7,6 +7,7 @@ import "../styles" as Styles
 Item {
     id: root
     property var deviceObject
+    readonly property real peak01: deviceObject ? deviceObject.peak : 0
 
     Styles.Theme { id: theme }
 
@@ -34,23 +35,52 @@ Item {
             onClicked: if (deviceObject) deviceObject.toggleMute()
         }
 
-        Styles.SliderStyle {
-            id: slider
+        // Wrap slider + activity meter so the meter doesn't participate in RowLayout sizing.
+        Item {
+            id: sliderWrap
             Layout.fillWidth: true
-            // Avoid jitter: while dragging, slider owns its own value, but we still
-            // send live volume updates for audible feedback.
-            onMoved: if (deviceObject) deviceObject.setVolume(value)
+            Layout.preferredHeight: slider.implicitHeight
 
-            Component.onCompleted: {
-                if (deviceObject) slider.value = deviceObject.volume
+            Styles.SliderStyle {
+                id: slider
+                anchors.fill: parent
+                // Avoid jitter: while dragging, slider owns its own value, but we still
+                // send live volume updates for audible feedback.
+                onMoved: if (deviceObject) deviceObject.setVolume(value)
+
+                Component.onCompleted: {
+                    if (deviceObject) slider.value = deviceObject.volume
+                }
+
+                Connections {
+                    target: deviceObject
+                    function onChanged() {
+                        if (!slider.pressed && deviceObject) {
+                            slider.value = deviceObject.volume
+                        }
+                    }
+                }
             }
 
-            Connections {
-                target: deviceObject
-                function onChanged() {
-                    if (!slider.pressed && deviceObject) {
-                        slider.value = deviceObject.volume
-                    }
+            // Device activity meter (max of its sessions), EarTrumpet-like.
+            Rectangle {
+                id: peakLine
+                readonly property real trackH: 7
+                readonly property real lineH: trackH
+                readonly property real trackY: slider.topPadding + Math.round((slider.availableHeight - trackH) / 2)
+
+                x: slider.leftPadding
+                y: trackY
+                width: Math.max(0, slider.availableWidth * Math.min(peak01, slider.visualPosition))
+                height: lineH
+                radius: 4
+                color: "#FFFFFF"
+                opacity: 0.22
+                visible: peak01 > 0.005
+                z: 20
+
+                Behavior on width {
+                    NumberAnimation { duration: 70; easing.type: Easing.OutQuad }
                 }
             }
         }

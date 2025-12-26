@@ -13,10 +13,13 @@
 #include <QSet>
 #include <QStringList>
 
+static QString sessionKeyStr(quint32 pid, const QString &exePath);
+
 AudioBackend::AudioBackend(QObject *parent)
     : QObject(parent)
 {
     qRegisterMetaType<QVector<DeviceState>>("QVector<DeviceState>");
+    qRegisterMetaType<QVector<SessionPeak>>("QVector<SessionPeak>");
 
     m_deviceModel = new DeviceListModel(this);
     // The QQmlEngine will take ownership when we addImageProvider("appicon", ...).
@@ -74,6 +77,13 @@ void AudioBackend::start()
             applySnapshot(devices);
         }
     }, Qt::QueuedConnection);
+    connect(m_worker, &AudioWorker::peaksReady, this, [this](const QVector<SessionPeak> &peaks) {
+        if (m_coalescer) {
+            m_coalescer->post([this, peaks]() { applyPeaks(peaks); });
+        } else {
+            applyPeaks(peaks);
+        }
+    }, Qt::QueuedConnection);
     connect(m_worker, &AudioWorker::error, this, [](const QString &msg) {
         qWarning("%s", qPrintable(msg));
     }, Qt::QueuedConnection);
@@ -82,6 +92,42 @@ void AudioBackend::start()
 
     QMetaObject::invokeMethod(m_worker, &AudioWorker::setShowSystemSessions, Qt::QueuedConnection, m_showSystemSessions);
     QMetaObject::invokeMethod(m_worker, &AudioWorker::start, Qt::QueuedConnection);
+}
+
+void AudioBackend::applyPeaks(const QVector<SessionPeak> &peaks)
+{
+    if (peaks.isEmpty())
+        return;
+
+    QHash<QString, double> maxPeakByDevice;
+
+    for (const auto &p : peaks) {
+        if (p.deviceId.isEmpty() || p.pid == 0 || p.exePath.isEmpty())
+            continue;
+
+        auto maxIt = maxPeakByDevice.find(p.deviceId);
+        if (maxIt == maxPeakByDevice.end() || p.peak > maxIt.value())
+            maxPeakByDevice.insert(p.deviceId, p.peak);
+
+        auto devIt = m_sessionByKeyByDevice.find(p.deviceId);
+        if (devIt == m_sessionByKeyByDevice.end())
+            continue;
+
+        const QString keyStr = sessionKeyStr(p.pid, p.exePath);
+        auto sessIt = devIt->find(keyStr);
+        if (sessIt == devIt->end())
+            continue;
+
+        if (sessIt.value())
+            sessIt.value()->setPeakInternal(p.peak);
+    }
+
+    // Also drive a per-device peak meter (max of its sessions).
+    for (auto it = maxPeakByDevice.constBegin(); it != maxPeakByDevice.constEnd(); ++it) {
+        if (auto *dev = m_deviceById.value(it.key(), nullptr)) {
+            dev->setPeakInternal(it.value());
+        }
+    }
 }
 
 void AudioBackend::refresh()

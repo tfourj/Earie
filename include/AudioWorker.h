@@ -27,9 +27,19 @@ struct DeviceState
     QVector<SessionState> sessions;
 };
 
+struct SessionPeak
+{
+    QString deviceId;
+    quint32 pid = 0;
+    QString exePath;
+    double peak = 0.0; // 0..1
+};
+
 Q_DECLARE_METATYPE(SessionState)
 Q_DECLARE_METATYPE(DeviceState)
 Q_DECLARE_METATYPE(QVector<DeviceState>)
+Q_DECLARE_METATYPE(SessionPeak)
+Q_DECLARE_METATYPE(QVector<SessionPeak>)
 
 class AudioWorker final : public QObject
 {
@@ -51,14 +61,17 @@ public slots:
 
 signals:
     void snapshotReady(const QVector<DeviceState> &devices);
+    void peaksReady(const QVector<SessionPeak> &peaks);
     void error(const QString &message);
 
 private:
     void scheduleSnapshot();
     void emitSnapshotNow();
+    void emitPeaksNow();
 
     bool m_showSystemSessions = false;
     QTimer m_snapshotTimer;
+    QTimer m_meterTimer;
 
     // PIMPL-ish: implemented in cpp to keep COM headers out of here.
     struct Impl;

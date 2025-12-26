@@ -14,6 +14,7 @@ class IconCache;
 class UpdateCoalescer;
 class AudioWorker;
 struct DeviceState;
+struct SessionPeak;
 
 class AudioBackend final : public QObject
 {
@@ -68,6 +69,7 @@ signals:
 
 private:
     void applySnapshot(const QVector<DeviceState> &devices);
+    void applyPeaks(const QVector<SessionPeak> &peaks);
     void rebuildMenusIfChanged(bool devicesChanged, bool processesChanged);
 
     QPointer<ConfigStore> m_config;

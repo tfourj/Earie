@@ -18,6 +18,18 @@
 #include <propvarutil.h>
 #include <functiondiscoverykeys_devpkey.h>
 
+// MinGW headers sometimes only forward-declare IAudioMeterInformation.
+// Define the minimal interface here so we can call GetPeakValue for per-session meters.
+struct IAudioMeterInformation : public IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetPeakValue(float *peak) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMeteringChannelCount(UINT *channelCount) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChannelsPeakValues(UINT channelCount, float *peakValues) = 0;
+    virtual HRESULT STDMETHODCALLTYPE QueryHardwareSupport(DWORD *hardwareSupportMask) = 0;
+};
+
+static const IID IID_IAudioMeterInformation = {0xc02216f6, 0x8c67, 0x4b5b, {0x9d, 0x00, 0xd0, 0x08, 0xe7, 0x3e, 0x00, 0x64}};
+
 static QString deviceFriendlyName(IMMDevice *device)
 {
     if (!device)
@@ -111,6 +123,7 @@ struct AudioWorker::Impl
         ComPtr<IAudioSessionControl> ctrl;
         ComPtr<IAudioSessionControl2> ctrl2;
         ComPtr<ISimpleAudioVolume> simple;
+        ComPtr<IAudioMeterInformation> meter;
         IAudioSessionEvents *events = nullptr; // owned via COM refcount
         qint64 lastActiveMs = 0;
         AudioSessionState state = AudioSessionStateInactive;
@@ -383,14 +396,19 @@ AudioWorker::AudioWorker(QObject *parent)
     // Ensure timers move with this object when we moveToThread().
     m_snapshotTimer.setParent(this);
     m->peakPollTimer.setParent(this);
+    m_meterTimer.setParent(this);
 
     m_snapshotTimer.setSingleShot(true);
     m_snapshotTimer.setInterval(16);
     connect(&m_snapshotTimer, &QTimer::timeout, this, &AudioWorker::emitSnapshotNow);
 
-    // Poll peak meters lightly for "recently active" behavior.
+    // Slow periodic refresh as a safety net (structure changes are still event-driven).
     m->peakPollTimer.setInterval(250);
     connect(&m->peakPollTimer, &QTimer::timeout, this, [this]() { scheduleSnapshot(); });
+
+    // Per-session peak meters for EarTrumpet-like activity line.
+    m_meterTimer.setInterval(50);
+    connect(&m_meterTimer, &QTimer::timeout, this, &AudioWorker::emitPeaksNow);
 }
 
 AudioWorker::~AudioWorker()
@@ -412,6 +430,7 @@ void AudioWorker::start()
     }
 
     m->peakPollTimer.start();
+    m_meterTimer.start();
     scheduleSnapshot();
 }
 
@@ -421,6 +440,7 @@ void AudioWorker::stop()
         return;
     m->peakPollTimer.stop();
     m_snapshotTimer.stop();
+    m_meterTimer.stop();
     m->shutdown();
 }
 
@@ -645,6 +665,15 @@ void AudioWorker::emitSnapshotNow()
                         sc.ctrl.attach(ctrl.detach());
                         sc.ctrl2.attach(ctrl2.detach());
                         sc.simple.attach(simple.detach());
+
+                        // Peak meter (may be unavailable for some sessions).
+                        if (sc.ctrl) {
+                            ComPtr<IAudioMeterInformation> meter;
+                            if (SUCCEEDED(sc.ctrl->QueryInterface(IID_IAudioMeterInformation, reinterpret_cast<void **>(meter.put()))) && meter) {
+                                sc.meter.attach(meter.detach());
+                            }
+                        }
+
                         sc.lastActiveMs = lastActive;
                         sc.state = st;
                         auto *events = new Impl::SessionEvents(this, key);
@@ -670,6 +699,34 @@ void AudioWorker::emitSnapshotNow()
     }
 
     emit snapshotReady(devices);
+}
+
+void AudioWorker::emitPeaksNow()
+{
+    if (!m)
+        return;
+
+    QVector<SessionPeak> peaks;
+    peaks.reserve(static_cast<int>(m->sessions.size()));
+
+    for (const auto &kv : m->sessions) {
+        const auto &key = kv.first;
+        const auto &sc = kv.second;
+
+        float p = 0.0f;
+        if (sc.meter) {
+            (void)sc.meter->GetPeakValue(&p);
+        }
+
+        SessionPeak sp;
+        sp.deviceId = key.deviceId;
+        sp.pid = key.pid;
+        sp.exePath = key.exePath;
+        sp.peak = qBound(0.0, static_cast<double>(p), 1.0);
+        peaks.push_back(sp);
+    }
+
+    emit peaksReady(peaks);
 }
 
 

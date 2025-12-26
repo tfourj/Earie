@@ -17,6 +17,7 @@ class AudioSession final : public QObject
     Q_PROPERTY(double volume READ volume NOTIFY changed) // 0..1
     Q_PROPERTY(bool muted READ muted NOTIFY changed)
     Q_PROPERTY(bool active READ active NOTIFY changed)
+    Q_PROPERTY(double peak READ peak NOTIFY changed) // 0..1
 public:
     explicit AudioSession(AudioBackend *backend,
                           const QString &deviceId,
@@ -33,12 +34,14 @@ public:
     double volume() const { return m_volume; }
     bool muted() const { return m_muted; }
     bool active() const { return m_active; }
+    double peak() const { return m_peak; }
 
     void setDisplayName(const QString &s);
     void setIconKey(const QString &k);
     void setVolumeInternal(double v);
     void setMutedInternal(bool m);
     void setActiveInternal(bool a);
+    void setPeakInternal(double p);
 
 public slots:
     Q_INVOKABLE void setVolume(double v);
@@ -61,6 +64,7 @@ private:
     double m_volume = 1.0;
     bool m_muted = false;
     bool m_active = false;
+    double m_peak = 0.0;
 
     QTimer m_volumeCommitTimer;
     double m_pendingVolume = -1.0;
