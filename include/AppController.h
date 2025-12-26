@@ -4,6 +4,8 @@
 #include <QPointer>
 #include <QSystemTrayIcon>
 #include <QTimer>
+#include <QPoint>
+#include <QRect>
 
 class QMenu;
 class QAction;
@@ -45,6 +47,8 @@ public slots:
     Q_INVOKABLE void requestRelayout();
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
+    Q_INVOKABLE QPoint cursorPos() const;
+    Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
 
 signals:
     void allDevicesChanged();

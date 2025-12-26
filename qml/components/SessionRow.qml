@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 
 import "../styles" as Styles
 
@@ -11,6 +12,24 @@ Item {
     property bool _wheelAdjusting: false
 
     Styles.Theme { id: theme }
+
+    function positionIconTipAtCursor() {
+        // Use global cursor position from C++ so it works even when the window isn't capturing mouse moves.
+        if (!appController)
+            return
+
+        const p = appController.cursorPos()
+        const avail = appController.cursorScreenAvailableGeometry()
+        const w = iconTip.width
+        const h = iconTip.height
+        const margin = 10
+
+        const xWanted = Math.round(p.x - w - margin)
+        const yWanted = Math.round(p.y - h - margin)
+
+        iconTip.x = Math.max(avail.x, Math.min(avail.x + avail.width - w, xWanted))
+        iconTip.y = Math.max(avail.y, Math.min(avail.y + avail.height - h, yWanted))
+    }
 
     height: 34
     opacity: sessionObject && sessionObject.active === false ? 0.82 : 1.0
@@ -29,11 +48,13 @@ Item {
     }
 
     RowLayout {
+        id: contentRow
         anchors.fill: parent
         // Inner padding so content (esp. the % text) isn't flush with the right edge.
         anchors.leftMargin: 6
         anchors.rightMargin: 10
         spacing: 10
+        opacity: 1.0
 
         Item {
             Layout.preferredWidth: 26
@@ -48,10 +69,26 @@ Item {
             }
 
             MouseArea {
+                id: iconMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onEntered: {
+                    if (appController && appController.showProcessStatusOnHover && sessionObject) {
+                        iconHoverTimer.restart()
+                    }
+                }
+                onExited: {
+                    iconHoverTimer.stop()
+                    iconTip.close()
+                }
+                onPositionChanged: {
+                    // Keep the tooltip near the cursor while it's visible.
+                    if (iconTip.visible) {
+                        root.positionIconTipAtCursor()
+                    }
+                }
                 onClicked: function(mouse) {
                     if (!sessionObject) return
                     if (mouse.button === Qt.RightButton) {
@@ -205,13 +242,55 @@ Item {
         }
     }
 
-    ToolTip.visible: appController && appController.showProcessStatusOnHover && hover.hovered && sessionObject
-    ToolTip.delay: 450
-    ToolTip.text: sessionObject
-                  ? (sessionObject.displayName
-                     + "\nStatus: " + (sessionObject.active ? "Active" : "Inactive")
-                     + "\nPID: " + sessionObject.pid)
-                  : ""
+    // Tooltip-only: show process name after a longer hover on the icon.
+    // Custom popup so we can match StyledMenu visuals + position at the cursor.
+    Timer {
+        id: iconHoverTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            if (!(appController && appController.showProcessStatusOnHover))
+                return
+            if (!sessionObject || !iconMouse.containsMouse)
+                return
+            root.positionIconTipAtCursor()
+            iconTip.open()
+        }
+    }
+
+    Window {
+        id: iconTip
+        flags: Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+        color: "transparent"
+        visible: false
+        width: tipBg.implicitWidth
+        height: tipBg.implicitHeight
+
+        function open() { visible = true }
+        function close() { visible = false }
+
+        Rectangle {
+            id: tipBg
+            anchors.fill: parent
+            implicitWidth: Math.min(320, tipText.implicitWidth + 16)
+            implicitHeight: tipText.implicitHeight + 16
+            radius: 10
+            // Same shape as StyledMenu, but lighter / more transparent.
+            color: Qt.rgba(0x20 / 255, 0x22 / 255, 0x26 / 255, 0.55)
+            border.color: Qt.rgba(1, 1, 1, 0.10)
+            border.width: 1
+
+            Text {
+                id: tipText
+                anchors.fill: parent
+                anchors.margins: 8
+                text: sessionObject ? sessionObject.displayName : ""
+                color: theme.text
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
+        }
+    }
 }
 
 

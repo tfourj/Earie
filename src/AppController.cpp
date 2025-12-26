@@ -15,6 +15,7 @@
 #include <QQuickView>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QCursor>
 #include <QScreen>
 #include <QTimer>
 #include <QAbstractItemModel>
@@ -119,6 +120,20 @@ void AppController::setAllDevices(bool v)
     if (m_audio)
         m_audio->setAllDevices(m_allDevices);
     emit allDevicesChanged();
+}
+
+QPoint AppController::cursorPos() const
+{
+    return QCursor::pos();
+}
+
+QRect AppController::cursorScreenAvailableGeometry() const
+{
+    const QPoint p = QCursor::pos();
+    QScreen *s = QGuiApplication::screenAt(p);
+    if (!s)
+        s = QGuiApplication::primaryScreen();
+    return s ? s->availableGeometry() : QRect(0, 0, 1920, 1080);
 }
 
 void AppController::setShowSystemSessions(bool v)
