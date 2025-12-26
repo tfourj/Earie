@@ -158,6 +158,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
                 sess->setIconKey(m_iconCache ? m_iconCache->ensureIconForExePath(ss.exePath) : ss.exePath);
                 sess->setVolumeInternal(ss.volume);
                 sess->setMutedInternal(ss.muted);
+                sess->setActiveInternal(ss.active);
                 map.insert(key, sess);
 
                 dev->sessionsModelTyped()->insertSession(dev->sessionsModelTyped()->rowCount(), sess);
@@ -167,6 +168,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
                 sess->setIconKey(m_iconCache ? m_iconCache->ensureIconForExePath(ss.exePath) : ss.exePath);
                 sess->setVolumeInternal(ss.volume);
                 sess->setMutedInternal(ss.muted);
+                sess->setActiveInternal(ss.active);
             }
         }
 

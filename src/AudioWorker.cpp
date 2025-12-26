@@ -628,11 +628,6 @@ void AudioWorker::emitSnapshotNow()
                             m->lastActiveByKeyStr.insert(keyStr, lastActive);
                         }
 
-                        const bool recent = (lastActive > 0) && ((nowMs - lastActive) <= 3000);
-                        const bool activeOrAudible = (st == AudioSessionStateActive) || recent;
-                        if (!activeOrAudible)
-                            continue;
-
                         SessionState ss;
                         ss.deviceId = id;
                         ss.pid = static_cast<quint32>(pid);

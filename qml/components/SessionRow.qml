@@ -11,6 +11,7 @@ Item {
     Styles.Theme { id: theme }
 
     height: 34
+    opacity: sessionObject && sessionObject.active === false ? 0.82 : 1.0
 
     Rectangle {
         anchors.fill: parent

@@ -52,6 +52,14 @@ void AudioSession::setMutedInternal(bool m)
     emit changed();
 }
 
+void AudioSession::setActiveInternal(bool a)
+{
+    if (m_active == a)
+        return;
+    m_active = a;
+    emit changed();
+}
+
 void AudioSession::setVolume(double v)
 {
     if (m_backend)
