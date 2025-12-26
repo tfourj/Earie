@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="earie.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   inkscape:export-filename="earie.ico.svg"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showguides="true"
+     inkscape:zoom="1.1474609"
+     inkscape:cx="222.66553"
+     inkscape:cy="325.50128"
+     inkscape:window-width="2560"
+     inkscape:window-height="1377"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3" />
+  <!-- background -->
+  <rect
+     x="386.8421"
+     y="141.81052"
+     width="95.157898"
+     height="228.37895"
+     rx="26.432751"
+     fill="#ffffff"
+     id="rect2-9"
+     style="stroke-width:1.25381" />
+  <!-- left volume bar (bigger + further left) -->
+  <rect
+     x="30"
+     y="44.321976"
+     width="95.157898"
+     height="423.35605"
+     rx="26.432747"
+     fill="#ffffff"
+     id="rect2"
+     style="stroke-width:1.7071" />
+  <!-- ear shape (cleaned & centered) -->
+  <path
+     d="m 270.27368,91.121732 c -66.61052,0 -114.18947,57.094728 -114.18947,123.705258 0,57.09474 38.06316,95.1579 61.85263,118.94737 19.03158,19.03158 23.78948,38.06316 23.78948,61.85263 0,42.82105 47.57894,57.09474 80.88421,28.54737 28.54736,-23.78947 23.78947,-66.61053 -4.7579,-99.91579 -28.54737,-33.30526 -57.09473,-66.61053 -57.09473,-104.67368 0,-28.54737 19.03157,-47.57895 47.57894,-47.57895 28.54737,0 47.57895,23.78947 47.57895,52.33684 0,23.78947 -14.27368,42.82105 -33.30526,61.85263"
+     fill="#ffffff"
+     id="path2"
+     style="stroke-width:1.18947" />
+  <!-- right volume bar (smaller) -->
+</svg>
