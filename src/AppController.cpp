@@ -293,18 +293,6 @@ void AppController::buildTray()
 
     m_menu->addSeparator();
 
-    m_actionShowSystem = m_menu->addAction(tr("Show system sessions"));
-    m_actionShowSystem->setCheckable(true);
-    m_actionShowSystem->setChecked(m_showSystemSessions);
-    connect(m_actionShowSystem, &QAction::toggled, this, &AppController::setShowSystemSessions);
-
-    m_actionShowHoverStatus = m_menu->addAction(tr("Show hover process status"));
-    m_actionShowHoverStatus->setCheckable(true);
-    m_actionShowHoverStatus->setChecked(m_showProcessStatusOnHover);
-    connect(m_actionShowHoverStatus, &QAction::toggled, this, &AppController::setShowProcessStatusOnHover);
-
-    m_menu->addSeparator();
-
     m_hiddenDevicesMenu = m_menu->addMenu(tr("Hidden devices…"));
     m_hiddenProcessesMenu = m_menu->addMenu(tr("Hidden processes…"));
 

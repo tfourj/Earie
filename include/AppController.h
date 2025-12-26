@@ -65,8 +65,6 @@ private:
     QAction *m_actionQuit = nullptr;
     QAction *m_actionDefaultOnly = nullptr;
     QAction *m_actionAllDevices = nullptr;
-    QAction *m_actionShowSystem = nullptr;
-    QAction *m_actionShowHoverStatus = nullptr;
 
     QPointer<QQuickView> m_view;
 
