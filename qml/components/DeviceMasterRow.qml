@@ -44,6 +44,8 @@ Item {
             Styles.SliderStyle {
                 id: slider
                 anchors.fill: parent
+                accentColor: (deviceObject && deviceObject.muted) ? "#6A6F78" : theme.accent
+                inactiveColor: (deviceObject && deviceObject.muted) ? "#3A3D44" : theme.trackInactive
                 // Avoid jitter: while dragging, slider owns its own value, but we still
                 // send live volume updates for audible feedback.
                 onMoved: if (deviceObject) deviceObject.setVolume(value)
@@ -75,7 +77,7 @@ Item {
                 height: lineH
                 radius: 4
                 color: "#FFFFFF"
-                opacity: 0.22
+                opacity: 0.32
                 visible: peak01 > 0.005
                 z: 20
 

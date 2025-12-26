@@ -71,6 +71,8 @@ Item {
             Styles.SliderStyle {
                 id: slider
                 anchors.fill: parent
+                accentColor: (sessionObject && sessionObject.muted) ? "#6A6F78" : theme.accent
+                inactiveColor: (sessionObject && sessionObject.muted) ? "#3A3D44" : theme.trackInactive
                 onMoved: if (sessionObject) sessionObject.setVolume(value)
 
                 Component.onCompleted: {
@@ -103,7 +105,7 @@ Item {
                 height: lineH
                 radius: 4
                 color: "#FFFFFF"
-                opacity: 0.22
+                opacity: 0.32
                 visible: peak01 > 0.005
                 z: 20
 
