@@ -129,6 +129,8 @@ void AppController::buildFlyout()
     m_view->setSource(QUrl(QStringLiteral("qrc:/qml/Main.qml")));
     m_view->setWidth(420);
     m_view->setHeight(520);
+    m_view->setMinimumWidth(420);
+    m_view->setMaximumWidth(420);
 
     applyWindowEffectsIfPossible();
 }
@@ -218,7 +220,8 @@ void AppController::positionFlyout()
         QRect work = screen ? screen->availableGeometry() : QGuiApplication::primaryScreen()->availableGeometry();
         const int margin = 12;
 
-        int x = trayGeom.right() - w;
+        // User request: keep flyout snapped to the right edge of the screen.
+        int x = work.right() - w - margin;
         int y = trayGeom.top() - h - margin;
 
         // If not enough above, go below.

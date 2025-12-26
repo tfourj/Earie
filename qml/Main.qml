@@ -49,19 +49,27 @@ Item {
             }
         }
 
-        ScrollView {
+        // Use Flickable directly (avoids ScrollView contentItem restrictions + hides scrollbars).
+        Flickable {
+            id: listFlick
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
 
-            contentItem: Column {
-                width: parent.width
+            contentWidth: width
+            contentHeight: listColumn.implicitHeight
+
+            Column {
+                id: listColumn
+                width: listFlick.width
                 spacing: 10
 
                 Repeater {
                     model: deviceModel
                     delegate: DeviceCell {
-                        width: parent.width
+                        width: listColumn.width
                         deviceObject: model.deviceObject
                     }
                 }
