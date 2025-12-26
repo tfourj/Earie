@@ -37,6 +37,8 @@ public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
+    Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
+    Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
 
 signals:
     void allDevicesChanged();

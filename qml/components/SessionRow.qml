@@ -47,7 +47,35 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: if (sessionObject) sessionObject.toggleMute()
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                    if (!sessionObject) return
+                    if (mouse.button === Qt.RightButton) {
+                        ctxMenu.popup()
+                    } else {
+                        sessionObject.toggleMute()
+                    }
+                }
+            }
+
+            Menu {
+                id: ctxMenu
+                MenuItem {
+                    text: "Hide globally"
+                    onTriggered: {
+                        if (appController && sessionObject) {
+                            appController.setProcessHiddenGlobal(sessionObject.exePath, true)
+                        }
+                    }
+                }
+                MenuItem {
+                    text: "Hide on this device"
+                    onTriggered: {
+                        if (appController && sessionObject) {
+                            appController.setProcessHiddenForDevice(sessionObject.deviceId, sessionObject.exePath, true)
+                        }
+                    }
+                }
             }
         }
 

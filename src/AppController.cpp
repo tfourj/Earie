@@ -18,6 +18,8 @@
 #include <QScreen>
 #include <QTimer>
 #include <QAbstractItemModel>
+#include <QWidgetAction>
+#include <QCheckBox>
 
 #include <windows.h>
 
@@ -130,6 +132,26 @@ void AppController::toggleFlyout()
         hideFlyout();
     else
         showFlyout();
+}
+
+void AppController::setProcessHiddenGlobal(const QString &exePath, bool hidden)
+{
+    if (!m_config || exePath.isEmpty())
+        return;
+    m_config->setProcessHiddenGlobal(exePath, hidden);
+    if (m_audio)
+        m_audio->refresh();
+    rebuildHiddenMenus();
+}
+
+void AppController::setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden)
+{
+    if (!m_config || deviceId.isEmpty() || exePath.isEmpty())
+        return;
+    m_config->setProcessHiddenForDevice(deviceId, exePath, hidden);
+    if (m_audio)
+        m_audio->refresh();
+    rebuildHiddenMenus();
 }
 
 void AppController::showFlyout()
@@ -414,6 +436,23 @@ void AppController::rebuildHiddenMenus()
     m_hiddenDevicesMenu->clear();
     m_hiddenProcessesMenu->clear();
 
+    auto addCheckItem = [this](QMenu *menu, const QString &label, bool checked, std::function<void(bool)> onToggled) {
+        if (!menu)
+            return;
+        auto *wa = new QWidgetAction(menu);
+        auto *cb = new QCheckBox(label);
+        cb->setChecked(checked);
+        cb->setFocusPolicy(Qt::NoFocus);
+        // Keep it visually aligned with standard menu text.
+        cb->setStyleSheet(QStringLiteral("QCheckBox { padding: 6px 12px; }"));
+        connect(cb, &QCheckBox::toggled, this, [onToggled](bool v) {
+            if (onToggled)
+                onToggled(v);
+        });
+        wa->setDefaultWidget(cb);
+        menu->addAction(wa);
+    };
+
     // Hidden devices list (check means hidden).
     const auto devicesAll = m_audio->devicesSnapshotAll();
     const auto devicesVisible = m_audio->devicesSnapshot();
@@ -426,10 +465,7 @@ void AppController::rebuildHiddenMenus()
             if (d.id.isEmpty())
                 continue;
             seen.insert(d.id);
-            QAction *a = m_hiddenDevicesMenu->addAction(d.name);
-            a->setCheckable(true);
-            a->setChecked(m_config->isDeviceHidden(d.id));
-            connect(a, &QAction::toggled, this, [this, id = d.id](bool checked) {
+            addCheckItem(m_hiddenDevicesMenu, d.name, m_config->isDeviceHidden(d.id), [this, id = d.id](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh(); // re-filter
             });
@@ -439,10 +475,7 @@ void AppController::rebuildHiddenMenus()
         for (const auto &hiddenId : m_config->hiddenDevices()) {
             if (hiddenId.isEmpty() || seen.contains(hiddenId))
                 continue;
-            QAction *a = m_hiddenDevicesMenu->addAction(tr("[disconnected] %1").arg(hiddenId));
-            a->setCheckable(true);
-            a->setChecked(true);
-            connect(a, &QAction::toggled, this, [this, id = hiddenId](bool checked) {
+            addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(hiddenId), true, [this, id = hiddenId](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh();
             });
@@ -460,10 +493,7 @@ void AppController::rebuildHiddenMenus()
     } else {
         for (const auto &p : known) {
             const QString label = p.displayName;
-            QAction *a = globalMenu->addAction(label);
-            a->setCheckable(true);
-            a->setChecked(m_config->isProcessHiddenGlobal(p.exePath));
-            connect(a, &QAction::toggled, this, [this, exe = p.exePath](bool checked) {
+            addCheckItem(globalMenu, label, m_config->isProcessHiddenGlobal(p.exePath), [this, exe = p.exePath](bool checked) {
                 m_config->setProcessHiddenGlobal(exe, checked);
                 m_audio->refresh();
             });
@@ -479,10 +509,7 @@ void AppController::rebuildHiddenMenus()
             continue;
         }
         for (const auto &p : perDev) {
-            QAction *a = devMenu->addAction(p.displayName);
-            a->setCheckable(true);
-            a->setChecked(m_config->isProcessHiddenForDevice(d.id, p.exePath));
-            connect(a, &QAction::toggled, this, [this, devId = d.id, exe = p.exePath](bool checked) {
+            addCheckItem(devMenu, p.displayName, m_config->isProcessHiddenForDevice(d.id, p.exePath), [this, devId = d.id, exe = p.exePath](bool checked) {
                 m_config->setProcessHiddenForDevice(devId, exe, checked);
                 m_audio->refresh();
             });
