@@ -1,6 +1,7 @@
 #include "IconCache.h"
 
 #include <QFileInfo>
+#include <QUrl>
 
 #include <windows.h>
 #include <shellapi.h>
@@ -71,7 +72,9 @@ QString IconCache::ensureIconForExePath(const QString &exePath)
 
 QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requestedSize)
 {
-    const QString key = id;
+    // QML uses encodeURIComponent(exePath) in the image:// URL.
+    // Decode it back to a real filesystem path.
+    const QString key = QUrl::fromPercentEncoding(id.toUtf8());
     QImage img;
     {
         QMutexLocker lock(&m_mutex);
