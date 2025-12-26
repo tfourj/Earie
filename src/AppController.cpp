@@ -307,18 +307,36 @@ void AppController::rebuildHiddenMenus()
     m_hiddenProcessesMenu->clear();
 
     // Hidden devices list (check means hidden).
-    const auto devices = m_audio->devicesSnapshot();
-    if (devices.isEmpty()) {
+    const auto devicesAll = m_audio->devicesSnapshotAll();
+    const auto devicesVisible = m_audio->devicesSnapshot();
+    if (devicesAll.isEmpty()) {
         QAction *a = m_hiddenDevicesMenu->addAction(tr("(No devices)"));
         a->setEnabled(false);
     } else {
-        for (const auto &d : devices) {
+        QSet<QString> seen;
+        for (const auto &d : devicesAll) {
+            if (d.id.isEmpty())
+                continue;
+            seen.insert(d.id);
             QAction *a = m_hiddenDevicesMenu->addAction(d.name);
             a->setCheckable(true);
             a->setChecked(m_config->isDeviceHidden(d.id));
             connect(a, &QAction::toggled, this, [this, id = d.id](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh(); // re-filter
+            });
+        }
+
+        // Also show hidden device IDs that are currently disconnected (so user can unhide).
+        for (const auto &hiddenId : m_config->hiddenDevices()) {
+            if (hiddenId.isEmpty() || seen.contains(hiddenId))
+                continue;
+            QAction *a = m_hiddenDevicesMenu->addAction(tr("[disconnected] %1").arg(hiddenId));
+            a->setCheckable(true);
+            a->setChecked(true);
+            connect(a, &QAction::toggled, this, [this, id = hiddenId](bool checked) {
+                m_config->setDeviceHidden(id, checked);
+                m_audio->refresh();
             });
         }
     }
@@ -344,7 +362,7 @@ void AppController::rebuildHiddenMenus()
         }
     }
 
-    for (const auto &d : devices) {
+    for (const auto &d : devicesVisible) {
         QMenu *devMenu = perDeviceMenu->addMenu(d.name);
         const auto perDev = m_audio->knownProcessesForDeviceSnapshot(d.id);
         if (perDev.isEmpty()) {

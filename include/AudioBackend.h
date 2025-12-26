@@ -42,6 +42,7 @@ public:
     IconCache *iconCache() const { return m_iconCache; }
 
     QVector<DeviceSnapshot> devicesSnapshot() const;
+    QVector<DeviceSnapshot> devicesSnapshotAll() const; // includes hidden + regardless of mode
     QVector<ProcessSnapshot> knownProcessesSnapshot() const;
     QVector<ProcessSnapshot> knownProcessesForDeviceSnapshot(const QString &deviceId) const;
 

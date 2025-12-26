@@ -128,6 +128,11 @@ bool ConfigStore::isDeviceHidden(const QString &deviceId) const
     return m_hiddenDevices.contains(deviceId);
 }
 
+QStringList ConfigStore::hiddenDevices() const
+{
+    return QStringList(m_hiddenDevices.begin(), m_hiddenDevices.end());
+}
+
 void ConfigStore::setDeviceHidden(const QString &deviceId, bool hidden)
 {
     if (deviceId.isEmpty())

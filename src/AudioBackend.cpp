@@ -224,6 +224,18 @@ QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const
     return out;
 }
 
+QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshotAll() const
+{
+    QVector<DeviceSnapshot> out;
+    out.reserve(m_lastSnapshot.size());
+    for (const auto &ds : m_lastSnapshot) {
+        if (ds.id.isEmpty())
+            continue;
+        out.push_back({ ds.id, ds.name });
+    }
+    return out;
+}
+
 QVector<AudioBackend::ProcessSnapshot> AudioBackend::knownProcessesSnapshot() const
 {
     QHash<QString, QString> uniq;
