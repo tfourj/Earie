@@ -28,6 +28,8 @@ public:
     bool isDeviceHidden(const QString &deviceId) const;
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
+    QStringList deviceOrder() const { return m_deviceOrder; }
+    void setDeviceOrder(const QStringList &order);
 
     bool isProcessHiddenGlobal(const QString &exePath) const;
     void setProcessHiddenGlobal(const QString &exePath, bool hidden);
@@ -45,6 +47,8 @@ private:
     QSet<QString> m_hiddenDevices;
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
+
+    QStringList m_deviceOrder; // ordered list of deviceIds
 };
 
 

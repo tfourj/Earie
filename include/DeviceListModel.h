@@ -30,6 +30,7 @@ public:
 
     void insertDevice(int row, AudioDevice *device);
     void removeDeviceAt(int row);
+    void moveDevice(int fromRow, int toRow);
     void clear();
 
 private:

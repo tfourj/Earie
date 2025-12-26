@@ -58,6 +58,9 @@ public:
     void setSessionVolume(const QString &deviceId, quint32 pid, const QString &exePath, double volume01);
     void setSessionMuted(const QString &deviceId, quint32 pid, const QString &exePath, bool muted);
 
+public slots:
+    Q_INVOKABLE void moveDeviceBefore(const QString &movingDeviceId, const QString &beforeDeviceId);
+
 signals:
     void devicesChanged();
     void knownProcessesChanged();

@@ -83,6 +83,24 @@ void DeviceListModel::removeDeviceAt(int row)
     endRemoveRows();
 }
 
+void DeviceListModel::moveDevice(int fromRow, int toRow)
+{
+    if (fromRow < 0 || fromRow >= m_devices.size())
+        return;
+    if (toRow < 0)
+        toRow = 0;
+    if (toRow >= m_devices.size())
+        toRow = m_devices.size() - 1;
+    if (fromRow == toRow)
+        return;
+
+    // Qt's beginMoveRows expects destinationRow as the index *after removal*.
+    const int dest = (toRow > fromRow) ? (toRow + 1) : toRow;
+    beginMoveRows(QModelIndex(), fromRow, fromRow, QModelIndex(), dest);
+    m_devices.move(fromRow, toRow);
+    endMoveRows();
+}
+
 void DeviceListModel::clear()
 {
     if (m_devices.isEmpty())

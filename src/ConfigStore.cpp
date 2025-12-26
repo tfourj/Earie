@@ -66,6 +66,13 @@ void ConfigStore::load()
         if (!devId.isEmpty() && !set.isEmpty())
             m_hiddenProcessesPerDevice.insert(devId, set);
     }
+
+    m_deviceOrder.clear();
+    for (const auto &v : o.value(QStringLiteral("deviceOrder")).toArray()) {
+        const QString id = v.toString();
+        if (!id.isEmpty())
+            m_deviceOrder.append(id);
+    }
 }
 
 void ConfigStore::save() const
@@ -99,6 +106,12 @@ void ConfigStore::save() const
             perDev.insert(it.key(), arr);
         }
         o.insert(QStringLiteral("hiddenProcessesPerDevice"), perDev);
+    }
+    {
+        QJsonArray arr;
+        for (const auto &id : m_deviceOrder)
+            arr.append(id);
+        o.insert(QStringLiteral("deviceOrder"), arr);
     }
 
     QFile f(path);
@@ -144,6 +157,14 @@ void ConfigStore::setDeviceHidden(const QString &deviceId, bool hidden)
         m_hiddenDevices.insert(deviceId);
     else
         m_hiddenDevices.remove(deviceId);
+    emit changed();
+}
+
+void ConfigStore::setDeviceOrder(const QStringList &order)
+{
+    if (m_deviceOrder == order)
+        return;
+    m_deviceOrder = order;
     emit changed();
 }
 

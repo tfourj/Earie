@@ -11,6 +11,7 @@
 
 #include <QDateTime>
 #include <QSet>
+#include <QStringList>
 
 AudioBackend::AudioBackend(QObject *parent)
     : QObject(parent)
@@ -208,6 +209,37 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         }
     }
 
+    // Apply user-defined device order (from config), keeping any remaining devices after.
+    if (m_config && m_deviceModel) {
+        QStringList desired;
+        const QStringList cfgOrder = m_config->deviceOrder();
+        QSet<QString> inDesired;
+        for (const auto &id : cfgOrder) {
+            if (keepDeviceIds.contains(id) && m_deviceModel->indexOfDeviceId(id) >= 0) {
+                desired.append(id);
+                inDesired.insert(id);
+            }
+        }
+        // Append the rest in current model order.
+        for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+            auto *d = m_deviceModel->deviceAt(i);
+            if (!d) continue;
+            if (!keepDeviceIds.contains(d->id())) continue;
+            if (inDesired.contains(d->id())) continue;
+            desired.append(d->id());
+            inDesired.insert(d->id());
+        }
+
+        // Reorder model to match desired list.
+        for (int targetRow = 0; targetRow < desired.size(); ++targetRow) {
+            const int curRow = m_deviceModel->indexOfDeviceId(desired.at(targetRow));
+            if (curRow >= 0 && curRow != targetRow) {
+                m_deviceModel->moveDevice(curRow, targetRow);
+                anyDevicesChanged = true;
+            }
+        }
+    }
+
     // Remove devices no longer present/visible.
     const auto existingDeviceIds = m_deviceById.keys();
     for (const auto &id : existingDeviceIds) {
@@ -240,6 +272,33 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
     }
 
     rebuildMenusIfChanged(anyDevicesChanged || defaultChanged, anyProcessesChanged);
+}
+
+void AudioBackend::moveDeviceBefore(const QString &movingDeviceId, const QString &beforeDeviceId)
+{
+    if (!m_deviceModel || !m_config)
+        return;
+    if (movingDeviceId.isEmpty() || beforeDeviceId.isEmpty() || movingDeviceId == beforeDeviceId)
+        return;
+
+    const int from = m_deviceModel->indexOfDeviceId(movingDeviceId);
+    const int to = m_deviceModel->indexOfDeviceId(beforeDeviceId);
+    if (from < 0 || to < 0 || from == to)
+        return;
+
+    m_deviceModel->moveDevice(from, to);
+
+    // Persist new order.
+    QStringList order;
+    order.reserve(m_deviceModel->rowCount());
+    for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+        auto *d = m_deviceModel->deviceAt(i);
+        if (d)
+            order.append(d->id());
+    }
+    m_config->setDeviceOrder(order);
+
+    emit devicesChanged();
 }
 
 QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const

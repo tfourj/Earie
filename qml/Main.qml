@@ -58,38 +58,71 @@ Item {
             }
 
             Text {
+                id: modeText
                 color: theme.textMuted
                 font.pixelSize: 12
                 text: appController && appController.allDevices ? "All devices" : "Default device"
+                opacity: modeMouse.containsMouse ? 1.0 : 0.9
+
+                MouseArea {
+                    id: modeMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: if (appController) appController.allDevices = !appController.allDevices
+                }
             }
         }
 
-        // Use Flickable directly (avoids ScrollView contentItem restrictions + hides scrollbars).
-        Flickable {
-            id: listFlick
+        // ListView is already a Flickable; we use it to support drag reordering.
+        ListView {
+            id: listView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            spacing: 10
             boundsBehavior: Flickable.StopAtBounds
-            flickableDirection: Flickable.VerticalFlick
+            model: deviceModel
 
-            contentWidth: width
-            contentHeight: listColumn.implicitHeight
+            delegate: Item {
+                id: row
+                width: listView.width
+                height: cell.implicitHeight
+                property string deviceId: model.deviceId
 
-            Column {
-                id: listColumn
-                width: listFlick.width
-                spacing: 10
+                // Drag the whole device cell to reorder.
+                Drag.active: dragHandler.active
+                Drag.source: row
+                Drag.supportedActions: Qt.MoveAction
 
-                Repeater {
-                    model: deviceModel
-                    delegate: DeviceCell {
-                        width: listColumn.width
-                        deviceObject: model.deviceObject
+                DeviceCell {
+                    id: cell
+                    anchors.fill: parent
+                    deviceObject: model.deviceObject
+                }
+
+                DropArea {
+                    anchors.fill: parent
+                    onEntered: {
+                        if (drag.source && drag.source.deviceId && drag.source.deviceId !== row.deviceId) {
+                            if (audioBackend) audioBackend.moveDeviceBefore(drag.source.deviceId, row.deviceId)
+                        }
                     }
                 }
 
-                Item { width: 1; height: 4 }
+                DragHandler {
+                    id: dragHandler
+                    target: row
+                    xAxis.enabled: false
+                    yAxis.enabled: true
+                }
+
+                states: [
+                    State {
+                        when: dragHandler.active
+                        PropertyChanges { target: row; z: 1000; opacity: 0.95 }
+                    }
+                ]
             }
         }
     }
