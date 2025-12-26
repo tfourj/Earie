@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import "../styles" as Styles
-import "../styles/SliderStyle.qml" as SliderStyle
 
 Item {
     id: root
@@ -60,7 +59,7 @@ Item {
             onClicked: if (sessionObject) sessionObject.toggleMute()
         }
 
-        SliderStyle {
+        Styles.SliderStyle {
             id: slider
             Layout.fillWidth: true
             value: sessionObject ? sessionObject.volume : 0

@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import "../styles" as Styles
-import "../styles/SliderStyle.qml" as SliderStyle
 
 Item {
     id: root
@@ -35,7 +34,7 @@ Item {
             onClicked: if (deviceObject) deviceObject.toggleMute()
         }
 
-        SliderStyle {
+        Styles.SliderStyle {
             id: slider
             Layout.fillWidth: true
             value: deviceObject ? deviceObject.volume : 0

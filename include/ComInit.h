@@ -13,7 +13,7 @@ public:
     ComInit &operator=(const ComInit &) = delete;
 
     HRESULT hr() const noexcept { return m_hr; }
-    bool ok() const noexcept { return SUCCEEDED(m_hr); }
+    bool ok() const noexcept { return SUCCEEDED(m_hr) || m_hr == RPC_E_CHANGED_MODE; }
 
 private:
     HRESULT m_hr = E_FAIL;

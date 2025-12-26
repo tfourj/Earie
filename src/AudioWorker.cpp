@@ -1,6 +1,5 @@
 #include "AudioWorker.h"
 
-#include "ComInit.h"
 #include "win/ComPtr.h"
 #include "win/Hr.h"
 
@@ -91,7 +90,7 @@ static bool isLikelySystemSession(const QString &exePath)
 
 struct AudioWorker::Impl
 {
-    ComInit com{COINIT_MULTITHREADED};
+    HRESULT comHr = E_FAIL;
     ComPtr<IMMDeviceEnumerator> enumerator;
 
     // Device id -> endpoint/session manager
@@ -318,8 +317,11 @@ struct AudioWorker::Impl
 
     HRESULT init(AudioWorker *worker)
     {
-        if (!com.ok())
-            return com.hr();
+        // IMPORTANT: CoInitializeEx must run on the thread that will use COM (this worker thread),
+        // not on the GUI thread.
+        comHr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        if (FAILED(comHr) && comHr != RPC_E_CHANGED_MODE)
+            return comHr;
 
         HR_RET(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), reinterpret_cast<void **>(enumerator.put())));
 
@@ -365,6 +367,11 @@ struct AudioWorker::Impl
         notifyClient.reset();
         endpointCb.reset();
         sessionCb.reset();
+
+        if (comHr == S_OK || comHr == S_FALSE) {
+            CoUninitialize();
+        }
+        comHr = E_FAIL;
     }
 };
 
@@ -372,6 +379,10 @@ AudioWorker::AudioWorker(QObject *parent)
     : QObject(parent)
 {
     m = new Impl();
+
+    // Ensure timers move with this object when we moveToThread().
+    m_snapshotTimer.setParent(this);
+    m->peakPollTimer.setParent(this);
 
     m_snapshotTimer.setSingleShot(true);
     m_snapshotTimer.setInterval(16);

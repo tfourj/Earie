@@ -3,8 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import "../styles" as Styles
-import "DeviceMasterRow.qml" as DeviceMasterRow
-import "SessionRow.qml" as SessionRow
 
 Item {
     id: root

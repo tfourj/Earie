@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import "styles" as Styles
-import "components/DeviceCell.qml" as DeviceCell
+import "components"
 
 Item {
     id: root
