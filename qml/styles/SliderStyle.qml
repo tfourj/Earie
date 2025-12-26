@@ -15,41 +15,49 @@ Slider {
     to: 1
     stepSize: 0.001
 
-    height: 26
+    height: 30
+    leftPadding: 8
+    rightPadding: 8
 
     background: Item {
-        implicitHeight: 26
+        implicitHeight: 30
         implicitWidth: 220
 
         Rectangle {
             id: track
-            x: 0
-            width: parent.width
-            height: 4
-            radius: 2
-            y: Math.round((parent.height - height) / 2) - 2
+            x: slider.leftPadding
+            width: slider.availableWidth
+            height: 7
+            radius: 4
+            y: slider.topPadding + Math.round((slider.availableHeight - height) / 2)
             color: slider.inactiveColor
         }
 
-        // Thin accent line under the track (EarTrumpet-like).
+        // Blue filled portion overlaying the grey track.
         Rectangle {
-            id: accentLine
-            x: 0
-            y: track.y + track.height + 4
-            width: Math.max(2, track.width * slider.visualPosition)
-            height: 2
-            radius: 1
+            id: fill
+            x: track.x
+            y: track.y
+            width: Math.max(0, track.width * slider.visualPosition)
+            height: track.height
+            radius: track.radius
             color: slider.enabled ? slider.accentColor : "#6A6F78"
             opacity: 0.95
         }
     }
 
     handle: Rectangle {
-        width: 10
-        height: 10
-        radius: 5
-        color: "transparent" // EarTrumpet hides the thumb visually; keep hitbox via Slider internals.
-        border.color: "transparent"
+        // Visible anchor/ball to show the current position.
+        width: 14
+        height: 14
+        radius: 7
+        color: slider.enabled ? slider.accentColor : "#6A6F78"
+        border.width: 1
+        border.color: "#D7DCE3"
+
+        // Explicitly position the thumb so it matches the track/fill (prevents drift).
+        x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
+        y: slider.topPadding + (slider.availableHeight - height) / 2
     }
 }
 

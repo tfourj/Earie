@@ -63,8 +63,20 @@ Item {
         Styles.SliderStyle {
             id: slider
             Layout.fillWidth: true
-            value: sessionObject ? sessionObject.volume : 0
             onMoved: if (sessionObject) sessionObject.setVolume(value)
+
+            Component.onCompleted: {
+                if (sessionObject) slider.value = sessionObject.volume
+            }
+
+            Connections {
+                target: sessionObject
+                function onChanged() {
+                    if (!slider.pressed && sessionObject) {
+                        slider.value = sessionObject.volume
+                    }
+                }
+            }
         }
 
         Text {
@@ -73,8 +85,7 @@ Item {
             color: theme.textMuted
             font.pixelSize: 13
             text: {
-                const v = sessionObject ? sessionObject.volume : 0
-                return Math.round(v * 100) + "%"
+                return Math.round(slider.value * 100) + "%"
             }
         }
     }

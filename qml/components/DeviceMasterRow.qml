@@ -37,8 +37,22 @@ Item {
         Styles.SliderStyle {
             id: slider
             Layout.fillWidth: true
-            value: deviceObject ? deviceObject.volume : 0
+            // Avoid jitter: while dragging, slider owns its own value, but we still
+            // send live volume updates for audible feedback.
             onMoved: if (deviceObject) deviceObject.setVolume(value)
+
+            Component.onCompleted: {
+                if (deviceObject) slider.value = deviceObject.volume
+            }
+
+            Connections {
+                target: deviceObject
+                function onChanged() {
+                    if (!slider.pressed && deviceObject) {
+                        slider.value = deviceObject.volume
+                    }
+                }
+            }
         }
 
         Text {
@@ -48,8 +62,7 @@ Item {
             color: theme.textMuted
             font.pixelSize: 13
             text: {
-                const v = deviceObject ? deviceObject.volume : 0
-                return Math.round(v * 100) + "%"
+                return Math.round(slider.value * 100) + "%"
             }
         }
     }
