@@ -27,6 +27,11 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QUrl>
+#include <QDialog>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPixmap>
 #include <algorithm>
 
 #include <windows.h>
@@ -143,6 +148,13 @@ void AppController::setAllDevices(bool v)
         m_config->setMode(m_allDevices ? ConfigStore::Mode::AllDevices : ConfigStore::Mode::DefaultDeviceOnly);
     if (m_audio)
         m_audio->setAllDevices(m_allDevices);
+    
+    // Sync tray menu checkboxes
+    if (m_actionDefaultOnly && m_actionAllDevices) {
+        m_actionDefaultOnly->setChecked(!m_allDevices);
+        m_actionAllDevices->setChecked(m_allDevices);
+    }
+    
     emit allDevicesChanged();
 }
 
@@ -292,6 +304,51 @@ void AppController::hideFlyout()
     if (!m_view)
         return;
     m_view->hide();
+}
+
+void AppController::showAboutDialog()
+{
+    QDialog dialog;
+    dialog.setWindowTitle(tr("About Earie"));
+    dialog.setFixedSize(300, 200);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(12);
+    layout->setContentsMargins(20, 20, 20, 20);
+
+    // Icon in the middle
+    QLabel *iconLabel = new QLabel(&dialog);
+    QPixmap pixmap(":/assets/earie.ico");
+    if (!pixmap.isNull()) {
+        iconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+    iconLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(iconLabel);
+
+    // App name and version
+    QLabel *titleLabel = new QLabel(tr("Earie"), &dialog);
+    titleLabel->setAlignment(Qt::AlignCenter);
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(16);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+    layout->addWidget(titleLabel);
+
+    QLabel *versionLabel = new QLabel(tr("Version %1").arg(EARIE_VERSION), &dialog);
+    versionLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(versionLabel);
+
+    layout->addStretch();
+
+    // Credits
+    QLabel *creditsLabel = new QLabel(tr("Made by tfourj"), &dialog);
+    creditsLabel->setAlignment(Qt::AlignCenter);
+    QFont creditsFont = creditsLabel->font();
+    creditsFont.setPointSize(9);
+    creditsLabel->setFont(creditsFont);
+    layout->addWidget(creditsLabel);
+
+    dialog.exec();
 }
 
 void AppController::buildFlyout()
@@ -471,6 +528,11 @@ void AppController::buildTray()
 
     m_hiddenDevicesMenu = m_menu->addMenu(tr("Hidden devices…"));
     m_hiddenProcessesMenu = m_menu->addMenu(tr("Hidden processes…"));
+
+    m_menu->addSeparator();
+
+    QAction *aAbout = m_menu->addAction(tr("About"));
+    connect(aAbout, &QAction::triggered, this, &AppController::showAboutDialog);
 
     m_menu->addSeparator();
     m_actionQuit = m_menu->addAction(tr("Quit"));

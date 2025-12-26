@@ -52,7 +52,11 @@ qt_add_executable(earie WIN32
 
 target_include_directories(earie PRIVATE include)
 
-target_compile_definitions(earie PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_definitions(earie PRIVATE
+    NOMINMAX
+    WIN32_LEAN_AND_MEAN
+    EARIE_VERSION="${PROJECT_VERSION}"
+)
 
 target_link_libraries(earie PRIVATE
     Qt6::Quick

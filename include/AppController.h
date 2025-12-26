@@ -51,6 +51,7 @@ public slots:
     Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
     Q_INVOKABLE void popupOpened();
     Q_INVOKABLE void popupClosed();
+    void showAboutDialog();
 
 signals:
     void allDevicesChanged();
