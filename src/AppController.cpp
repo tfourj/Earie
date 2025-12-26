@@ -492,12 +492,9 @@ void AppController::buildTray()
 
     m_menu->addSeparator();
 
-    QAction *modeHeader = m_menu->addAction(tr("Mode"));
-    modeHeader->setEnabled(false);
-
-    m_actionDefaultOnly = m_menu->addAction(tr("Default device only"));
+    m_actionDefaultOnly = m_menu->addAction(tr("Show default device"));
     m_actionDefaultOnly->setCheckable(true);
-    m_actionAllDevices = m_menu->addAction(tr("All devices"));
+    m_actionAllDevices = m_menu->addAction(tr("Show all devices"));
     m_actionAllDevices->setCheckable(true);
 
     auto syncModeChecks = [this]() {
@@ -516,6 +513,8 @@ void AppController::buildTray()
         setAllDevices(true);
         syncModeChecks();
     });
+
+    m_menu->addSeparator();
 
     m_actionStartWithWindows = m_menu->addAction(tr("Start with Windows"));
     m_actionStartWithWindows->setCheckable(true);
