@@ -28,6 +28,14 @@ Item {
 
     Styles.Theme { id: theme }
 
+    // Ensure any open QML menus are closed when the app loses focus (e.g. click desktop).
+    Connections {
+        target: appController
+        function onCloseAllPopupsRequested() {
+            if (settingsMenu) settingsMenu.close()
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         radius: theme.radius

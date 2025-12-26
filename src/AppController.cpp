@@ -107,6 +107,24 @@ bool AppController::init()
     connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::defaultDeviceChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, &AppController::rebuildHiddenMenus);
+
+    // If the user clicks the desktop while a QML menu is open, the flyout is already deactivated
+    // (because the menu is its own native window), so WindowDeactivate won't fire again.
+    // Close popups + flyout on app deactivation to match expected behavior.
+    connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
+        if (state == Qt::ApplicationActive)
+            return;
+        if (!m_view || !m_view->isVisible())
+            return;
+        // Clicking the tray icon often deactivates the app before the tray "activated" signal arrives.
+        // If we close here without suppression, the next tray click will immediately re-open the flyout.
+        m_suppressNextTrayToggle = true;
+        if (!m_trayToggleSuppressTimer.isActive())
+            m_trayToggleSuppressTimer.start();
+        if (m_popupDepth > 0)
+            emit closeAllPopupsRequested();
+        hideFlyout();
+    });
     return true;
 }
 
@@ -134,6 +152,20 @@ QRect AppController::cursorScreenAvailableGeometry() const
     if (!s)
         s = QGuiApplication::primaryScreen();
     return s ? s->availableGeometry() : QRect(0, 0, 1920, 1080);
+}
+
+void AppController::popupOpened()
+{
+    m_popupDepth = qMax(0, m_popupDepth + 1);
+}
+
+void AppController::popupClosed()
+{
+    m_popupDepth = qMax(0, m_popupDepth - 1);
+    // If a popup just closed and the flyout is no longer active, close it now.
+    if (m_popupDepth == 0 && m_view && m_view->isVisible() && !m_view->isActive()) {
+        hideFlyout();
+    }
 }
 
 void AppController::setShowSystemSessions(bool v)
@@ -564,7 +596,11 @@ bool AppController::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == m_view) {
         if (event->type() == QEvent::WindowDeactivate) {
-            // Close on focus loss (EarTrumpet-like).
+            // Close on focus loss (EarTrumpet-like), but NOT while a QML popup/menu is open:
+            // those can be separate native windows and would otherwise instantly close the flyout.
+            if (m_popupDepth > 0)
+                return QObject::eventFilter(watched, event);
+
             if (m_view && m_view->isVisible()) {
                 m_suppressNextTrayToggle = true;
                 if (!m_trayToggleSuppressTimer.isActive())

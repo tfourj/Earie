@@ -49,12 +49,15 @@ public slots:
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
     Q_INVOKABLE QPoint cursorPos() const;
     Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
+    Q_INVOKABLE void popupOpened();
+    Q_INVOKABLE void popupClosed();
 
 signals:
     void allDevicesChanged();
     void showSystemSessionsChanged();
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
+    void closeAllPopupsRequested();
 
 private slots:
     void rebuildHiddenMenus();
@@ -110,6 +113,10 @@ private:
 
     // Avoid rebuilding the tray menus while the tray context menu is open (causes flicker/close/crash).
     bool m_deferHiddenMenuRebuild = false;
+
+    // QML menus/popups (QtQuick Controls) can be separate native windows and can trigger WindowDeactivate
+    // on the flyout. While a popup is open we suppress auto-close, and close once popups are gone.
+    int m_popupDepth = 0;
 };
 
 

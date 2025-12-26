@@ -8,6 +8,15 @@ Menu {
 
     padding: 6
     implicitWidth: 190
+    closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+
+    onAboutToShow: if (appController) appController.popupOpened()
+    onAboutToHide: if (appController) appController.popupClosed()
+
+    Connections {
+        target: appController
+        function onCloseAllPopupsRequested() { root.close() }
+    }
 
     Styles.Theme { id: theme }
 
