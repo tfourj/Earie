@@ -71,3 +71,23 @@ target_link_libraries(earie PRIVATE
 set_target_properties(earie PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
+
+if (WIN32)
+    get_target_property(_qt_qmake_executable Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(_qt_bin_dir "${_qt_qmake_executable}" DIRECTORY)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+    if (WINDEPLOYQT_EXECUTABLE)
+        set(_deploy_dir "${CMAKE_SOURCE_DIR}/release")
+        add_custom_command(TARGET earie POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${_deploy_dir}"
+            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:earie>" "${_deploy_dir}/$<TARGET_FILE_NAME:earie>"
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                --dir "${_deploy_dir}"
+                --qmldir "${CMAKE_SOURCE_DIR}/qml"
+                "${_deploy_dir}/$<TARGET_FILE_NAME:earie>"
+            COMMENT "Running windeployqt for earie (release folder)"
+        )
+    else()
+        message(WARNING "windeployqt not found; skipping Qt deployment step")
+    endif()
+endif()
