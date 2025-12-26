@@ -37,6 +37,8 @@ public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
+    // Called by QML when content height changes (e.g. sessions hidden/unhidden).
+    Q_INVOKABLE void requestRelayout();
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
 
@@ -88,6 +90,9 @@ private:
     // We suppress the next toggle for a short window to make click-to-close reliable.
     bool m_suppressNextTrayToggle = false;
     QTimer m_trayToggleSuppressTimer;
+
+    // Coalesce repeated relayout requests while QML is settling.
+    QTimer m_relayoutCoalesce;
 };
 
 

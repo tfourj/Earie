@@ -22,6 +22,10 @@ Item {
         + 4
     )
 
+    onContentHeightHintChanged: {
+        if (appController) appController.requestRelayout()
+    }
+
     Styles.Theme { id: theme }
 
     Rectangle {

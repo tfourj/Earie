@@ -20,6 +20,8 @@
 #include <QAbstractItemModel>
 #include <QWidgetAction>
 #include <QCheckBox>
+#include <QFileInfo>
+#include <algorithm>
 
 #include <windows.h>
 
@@ -51,6 +53,16 @@ AppController::AppController(QObject *parent)
     m_trayToggleSuppressTimer.setParent(this);
     connect(&m_trayToggleSuppressTimer, &QTimer::timeout, this, [this]() {
         m_suppressNextTrayToggle = false;
+    });
+
+    m_relayoutCoalesce.setSingleShot(true);
+    m_relayoutCoalesce.setInterval(30);
+    m_relayoutCoalesce.setParent(this);
+    connect(&m_relayoutCoalesce, &QTimer::timeout, this, [this]() {
+        if (!m_view || !m_view->isVisible())
+            return;
+        adjustFlyoutHeightToContent();
+        positionFlyout();
     });
 }
 
@@ -142,6 +154,7 @@ void AppController::setProcessHiddenGlobal(const QString &exePath, bool hidden)
     if (m_audio)
         m_audio->refresh();
     rebuildHiddenMenus();
+    requestRelayout();
 }
 
 void AppController::setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden)
@@ -152,6 +165,22 @@ void AppController::setProcessHiddenForDevice(const QString &deviceId, const QSt
     if (m_audio)
         m_audio->refresh();
     rebuildHiddenMenus();
+    requestRelayout();
+}
+
+void AppController::requestRelayout()
+{
+    if (!m_view || !m_view->isVisible())
+        return;
+    if (!m_relayoutCoalesce.isActive())
+        m_relayoutCoalesce.start();
+    // A second measure pass after delegates settle (covers animated row removal, etc).
+    QTimer::singleShot(80, this, [this]() {
+        if (!m_view || !m_view->isVisible())
+            return;
+        adjustFlyoutHeightToContent();
+        positionFlyout();
+    });
 }
 
 void AppController::showFlyout()
@@ -487,32 +516,147 @@ void AppController::rebuildHiddenMenus()
     QMenu *perDeviceMenu = m_hiddenProcessesMenu->addMenu(tr("Per device"));
 
     const auto known = m_audio->knownProcessesSnapshot();
-    if (known.isEmpty()) {
+    QHash<QString, QString> nameByExe;
+    nameByExe.reserve(known.size());
+    for (const auto &p : known) {
+        if (!p.exePath.isEmpty())
+            nameByExe.insert(p.exePath, p.displayName);
+    }
+    // Ensure config-stored hidden processes are always present, even if not currently "known".
+    for (const auto &exe : m_config->hiddenProcessesGlobalSet()) {
+        if (exe.isEmpty())
+            continue;
+        if (!nameByExe.contains(exe)) {
+            const QString base = QFileInfo(exe).fileName();
+            nameByExe.insert(exe, base.isEmpty() ? exe : base);
+        }
+    }
+
+    if (nameByExe.isEmpty()) {
         QAction *a = globalMenu->addAction(tr("(No processes)"));
         a->setEnabled(false);
     } else {
-        for (const auto &p : known) {
-            const QString label = p.displayName;
-            addCheckItem(globalMenu, label, m_config->isProcessHiddenGlobal(p.exePath), [this, exe = p.exePath](bool checked) {
+        QVector<QString> exes;
+        exes.reserve(nameByExe.size());
+        for (auto it = nameByExe.begin(); it != nameByExe.end(); ++it)
+            exes.push_back(it.key());
+        std::sort(exes.begin(), exes.end(), [&nameByExe](const QString &a, const QString &b) {
+            const QString an = nameByExe.value(a).toCaseFolded();
+            const QString bn = nameByExe.value(b).toCaseFolded();
+            if (an == bn)
+                return a.toCaseFolded() < b.toCaseFolded();
+            return an < bn;
+        });
+
+        for (const auto &exe : exes) {
+            const QString label = nameByExe.value(exe).isEmpty() ? exe : nameByExe.value(exe);
+            addCheckItem(globalMenu, label, m_config->isProcessHiddenGlobal(exe), [this, exe](bool checked) {
                 m_config->setProcessHiddenGlobal(exe, checked);
                 m_audio->refresh();
+                rebuildHiddenMenus();
+                requestRelayout();
             });
         }
     }
 
     for (const auto &d : devicesVisible) {
         QMenu *devMenu = perDeviceMenu->addMenu(d.name);
-        const auto perDev = m_audio->knownProcessesForDeviceSnapshot(d.id);
-        if (perDev.isEmpty()) {
+        const auto perDevKnown = m_audio->knownProcessesForDeviceSnapshot(d.id);
+        QHash<QString, QString> perNameByExe;
+        perNameByExe.reserve(perDevKnown.size());
+        for (const auto &p : perDevKnown) {
+            if (!p.exePath.isEmpty())
+                perNameByExe.insert(p.exePath, p.displayName);
+        }
+        // Include config-stored hidden per-device processes even if not currently known.
+        const auto hiddenMap = m_config->hiddenProcessesPerDeviceMap();
+        const auto itHiddenSet = hiddenMap.constFind(d.id);
+        if (itHiddenSet != hiddenMap.constEnd()) {
+            for (const auto &exe : itHiddenSet.value()) {
+                if (exe.isEmpty())
+                    continue;
+                if (!perNameByExe.contains(exe)) {
+                    const QString base = QFileInfo(exe).fileName();
+                    perNameByExe.insert(exe, base.isEmpty() ? exe : base);
+                }
+            }
+        }
+
+        if (perNameByExe.isEmpty()) {
             QAction *a = devMenu->addAction(tr("(No processes)"));
             a->setEnabled(false);
             continue;
         }
-        for (const auto &p : perDev) {
-            addCheckItem(devMenu, p.displayName, m_config->isProcessHiddenForDevice(d.id, p.exePath), [this, devId = d.id, exe = p.exePath](bool checked) {
+
+        QVector<QString> exes;
+        exes.reserve(perNameByExe.size());
+        for (auto it = perNameByExe.begin(); it != perNameByExe.end(); ++it)
+            exes.push_back(it.key());
+        std::sort(exes.begin(), exes.end(), [&perNameByExe](const QString &a, const QString &b) {
+            const QString an = perNameByExe.value(a).toCaseFolded();
+            const QString bn = perNameByExe.value(b).toCaseFolded();
+            if (an == bn)
+                return a.toCaseFolded() < b.toCaseFolded();
+            return an < bn;
+        });
+
+        for (const auto &exe : exes) {
+            const QString label = perNameByExe.value(exe).isEmpty() ? exe : perNameByExe.value(exe);
+            addCheckItem(devMenu, label, m_config->isProcessHiddenForDevice(d.id, exe), [this, devId = d.id, exe](bool checked) {
                 m_config->setProcessHiddenForDevice(devId, exe, checked);
                 m_audio->refresh();
+                rebuildHiddenMenus();
+                requestRelayout();
             });
+        }
+    }
+
+    // Also show per-device hidden rules for devices that are currently disconnected/not visible,
+    // so user can still unhide them.
+    const auto hiddenMapAll = m_config->hiddenProcessesPerDeviceMap();
+    if (!hiddenMapAll.isEmpty()) {
+        QSet<QString> visibleDevIds;
+        for (const auto &d : devicesVisible)
+            visibleDevIds.insert(d.id);
+
+        for (auto it = hiddenMapAll.begin(); it != hiddenMapAll.end(); ++it) {
+            const QString devId = it.key();
+            if (devId.isEmpty() || visibleDevIds.contains(devId))
+                continue;
+            const auto &exeSet = it.value();
+            if (exeSet.isEmpty())
+                continue;
+
+            QMenu *devMenu = perDeviceMenu->addMenu(tr("[disconnected] %1").arg(devId));
+            QHash<QString, QString> perNameByExe;
+            for (const auto &exe : exeSet) {
+                if (exe.isEmpty())
+                    continue;
+                const QString base = QFileInfo(exe).fileName();
+                perNameByExe.insert(exe, base.isEmpty() ? exe : base);
+            }
+
+            QVector<QString> exes;
+            exes.reserve(perNameByExe.size());
+            for (auto it2 = perNameByExe.begin(); it2 != perNameByExe.end(); ++it2)
+                exes.push_back(it2.key());
+            std::sort(exes.begin(), exes.end(), [&perNameByExe](const QString &a, const QString &b) {
+                const QString an = perNameByExe.value(a).toCaseFolded();
+                const QString bn = perNameByExe.value(b).toCaseFolded();
+                if (an == bn)
+                    return a.toCaseFolded() < b.toCaseFolded();
+                return an < bn;
+            });
+
+            for (const auto &exe : exes) {
+                const QString label = perNameByExe.value(exe).isEmpty() ? exe : perNameByExe.value(exe);
+                addCheckItem(devMenu, label, m_config->isProcessHiddenForDevice(devId, exe), [this, devId, exe](bool checked) {
+                    m_config->setProcessHiddenForDevice(devId, exe, checked);
+                    m_audio->refresh();
+                    rebuildHiddenMenus();
+                    requestRelayout();
+                });
+            }
         }
     }
 }

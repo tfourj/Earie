@@ -40,6 +40,9 @@ public:
     bool isProcessHiddenForDevice(const QString &deviceId, const QString &exePath) const;
     void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
 
+    const QSet<QString> &hiddenProcessesGlobalSet() const { return m_hiddenProcessesGlobal; }
+    const QHash<QString, QSet<QString>> &hiddenProcessesPerDeviceMap() const { return m_hiddenProcessesPerDevice; }
+
 signals:
     void changed();
 
