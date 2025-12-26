@@ -6,42 +6,49 @@
 #include <windows.h>
 #include <shellapi.h>
 
-static QImage qimageFromHICON(HICON hIcon)
+static QImage qimageFromHICON(HICON hIcon, int desiredPx)
 {
     if (!hIcon)
         return QImage();
 
-    ICONINFO info{};
-    if (!GetIconInfo(hIcon, &info))
-        return QImage();
+    if (desiredPx <= 0)
+        desiredPx = 32;
 
-    BITMAP bmp{};
-    GetObject(info.hbmColor ? info.hbmColor : info.hbmMask, sizeof(bmp), &bmp);
-
-    const int w = bmp.bmWidth;
-    const int h = bmp.bmHeight;
-
+    // Render icon into a 32-bit ARGB DIB using DrawIconEx to preserve alpha.
     BITMAPINFO bi{};
     bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bi.bmiHeader.biWidth = w;
-    bi.bmiHeader.biHeight = -h;
+    bi.bmiHeader.biWidth = desiredPx;
+    bi.bmiHeader.biHeight = -desiredPx; // top-down
     bi.bmiHeader.biPlanes = 1;
     bi.bmiHeader.biBitCount = 32;
     bi.bmiHeader.biCompression = BI_RGB;
 
-    QImage img(w, h, QImage::Format_ARGB32_Premultiplied);
-    img.fill(Qt::transparent);
+    void *bits = nullptr;
+    HDC screenDc = GetDC(nullptr);
+    HDC memDc = CreateCompatibleDC(screenDc);
+    HBITMAP dib = CreateDIBSection(screenDc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if (!dib || !bits || !memDc) {
+        if (dib) DeleteObject(dib);
+        if (memDc) DeleteDC(memDc);
+        if (screenDc) ReleaseDC(nullptr, screenDc);
+        return {};
+    }
 
-    HDC hdc = GetDC(nullptr);
-    GetDIBits(hdc, info.hbmColor, 0, h, img.bits(), &bi, DIB_RGB_COLORS);
-    ReleaseDC(nullptr, hdc);
+    HGDIOBJ oldBmp = SelectObject(memDc, dib);
+    // Clear to transparent.
+    memset(bits, 0, static_cast<size_t>(desiredPx) * static_cast<size_t>(desiredPx) * 4);
 
-    if (info.hbmColor)
-        DeleteObject(info.hbmColor);
-    if (info.hbmMask)
-        DeleteObject(info.hbmMask);
+    DrawIconEx(memDc, 0, 0, hIcon, desiredPx, desiredPx, 0, nullptr, DI_NORMAL);
 
-    return img;
+    QImage img(reinterpret_cast<uchar *>(bits), desiredPx, desiredPx, QImage::Format_ARGB32_Premultiplied);
+    QImage out = img.copy(); // detach from DIB memory
+
+    SelectObject(memDc, oldBmp);
+    DeleteObject(dib);
+    DeleteDC(memDc);
+    ReleaseDC(nullptr, screenDc);
+
+    return out;
 }
 
 IconCache::IconCache()
@@ -105,10 +112,11 @@ QImage IconCache::loadSmallIconForExePath(const QString &exePath) const
 
     SHFILEINFOW sfi{};
     const std::wstring wpath = path.toStdWString();
-    if (!SHGetFileInfoW(wpath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON))
+    // Prefer larger icon for better downscaling quality.
+    if (!SHGetFileInfoW(wpath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_LARGEICON))
         return {};
 
-    QImage img = qimageFromHICON(sfi.hIcon);
+    QImage img = qimageFromHICON(sfi.hIcon, 64);
     DestroyIcon(sfi.hIcon);
     return img;
 }
