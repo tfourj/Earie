@@ -30,6 +30,7 @@ qt_add_executable(earie WIN32
     src/WinAcrylic.cpp
     src/WinTrayPositioner.cpp
     resources.qrc
+    app.rc
 
     include/AppController.h
     include/AudioBackend.h
