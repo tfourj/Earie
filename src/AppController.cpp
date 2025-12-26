@@ -28,6 +28,7 @@
 #include <windows.h>
 
 static QIcon makeEarieTrayIcon(double volume01, bool muted);
+static QString trayMenuStyleSheet();
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -349,6 +350,9 @@ void AppController::applyWindowEffectsIfPossible()
 void AppController::buildTray()
 {
     m_menu = new QMenu;
+    // Best-effort: style the tray QMenu to resemble the in-app QML StyledMenu.
+    // Note: On some Windows setups the tray context menu may still be partially native-looking.
+    m_menu->setStyleSheet(trayMenuStyleSheet());
 
     m_actionOpen = m_menu->addAction(tr("Open mixer"));
     connect(m_actionOpen, &QAction::triggered, this, &AppController::showFlyout);
@@ -432,6 +436,49 @@ static QIcon makeEarieTrayIcon(double volume01, bool muted)
         icon = QIcon::fromTheme(QStringLiteral("audio-volume-high"));
     }
     return icon;
+}
+
+static QString trayMenuStyleSheet()
+{
+    // Dark, rounded menu matching the app theme as closely as native tray menus allow.
+    return QStringLiteral(
+        "QMenu {"
+        "  background-color: #1D1F22;"
+        "  color: #E7EAF0;"
+        "  border: 1px solid rgba(255,255,255,0.08);"
+        "  padding: 6px;"
+        "  border-radius: 10px;"
+        "}"
+        "QMenu::item {"
+        "  padding: 6px 12px;"
+        "  border-radius: 8px;"
+        "}"
+        "QMenu::item:selected {"
+        "  background-color: #2E3136;"
+        "}"
+        "QMenu::separator {"
+        "  height: 1px;"
+        "  margin: 6px 10px;"
+        "  background: rgba(255,255,255,0.08);"
+        "}"
+        "QCheckBox {"
+        "  color: #E7EAF0;"
+        "}"
+        "QCheckBox::indicator {"
+        "  width: 14px;"
+        "  height: 14px;"
+        "}"
+        "QCheckBox::indicator:unchecked {"
+        "  border: 1px solid rgba(255,255,255,0.22);"
+        "  background: transparent;"
+        "  border-radius: 3px;"
+        "}"
+        "QCheckBox::indicator:checked {"
+        "  border: 1px solid rgba(35,150,255,0.95);"
+        "  background: rgba(35,150,255,0.75);"
+        "  border-radius: 3px;"
+        "}"
+    );
 }
 
 void AppController::updateTrayIcon()
