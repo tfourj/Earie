@@ -17,6 +17,11 @@ AudioSession::AudioSession(AudioBackend *backend,
     , m_exePath(exePath)
 {
     m_displayName = exePath.isEmpty() ? QStringLiteral("Unknown") : QFileInfo(exePath).baseName();
+
+    m_volumeCommitTimer.setSingleShot(true);
+    m_volumeCommitTimer.setInterval(16);
+    m_volumeCommitTimer.setParent(this);
+    connect(&m_volumeCommitTimer, &QTimer::timeout, this, &AudioSession::flushPendingVolume);
 }
 
 void AudioSession::setDisplayName(const QString &s)
@@ -62,8 +67,10 @@ void AudioSession::setActiveInternal(bool a)
 
 void AudioSession::setVolume(double v)
 {
-    if (m_backend)
-        m_backend->setSessionVolume(m_deviceId, m_pid, m_exePath, v);
+    // Coalesce rapid slider drags to avoid flooding COM calls (and potential instability).
+    m_pendingVolume = qBound(0.0, v, 1.0);
+    if (!m_volumeCommitTimer.isActive())
+        m_volumeCommitTimer.start();
 }
 
 void AudioSession::setMuted(bool m)
@@ -75,6 +82,16 @@ void AudioSession::setMuted(bool m)
 void AudioSession::toggleMute()
 {
     setMuted(!muted());
+}
+
+void AudioSession::flushPendingVolume()
+{
+    if (m_pendingVolume < 0.0)
+        return;
+    const double v = m_pendingVolume;
+    m_pendingVolume = -1.0;
+    if (m_backend)
+        m_backend->setSessionVolume(m_deviceId, m_pid, m_exePath, v);
 }
 
 

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QSystemTrayIcon>
+#include <QTimer>
 
 class QMenu;
 class QAction;
@@ -46,6 +47,7 @@ private:
     void positionFlyout();
     void adjustFlyoutHeightToContent();
     void applyWindowEffectsIfPossible();
+    void updateTrayIcon();
 
     bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -67,6 +69,12 @@ private:
 
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
+
+    QTimer m_trayIconCoalesce;
+    int m_pendingTrayVolPct = -1;
+    bool m_pendingTrayMuted = false;
+    int m_lastTrayVolPct = -1;
+    bool m_lastTrayMuted = false;
 };
 
 

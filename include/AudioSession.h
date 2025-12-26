@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTimer>
 #include <QString>
 
 class AudioBackend;
@@ -48,6 +49,8 @@ signals:
     void changed();
 
 private:
+    void flushPendingVolume();
+
     AudioBackend *m_backend = nullptr;
     QString m_deviceId;
     quint32 m_pid = 0;
@@ -58,6 +61,9 @@ private:
     double m_volume = 1.0;
     bool m_muted = false;
     bool m_active = false;
+
+    QTimer m_volumeCommitTimer;
+    double m_pendingVolume = -1.0;
 };
 
 

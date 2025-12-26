@@ -12,6 +12,11 @@ AudioDevice::AudioDevice(AudioBackend *backend, const QString &id, const QString
     , m_name(name)
 {
     m_sessions = new SessionListModel(this);
+
+    m_volumeCommitTimer.setSingleShot(true);
+    m_volumeCommitTimer.setInterval(16);
+    m_volumeCommitTimer.setParent(this);
+    connect(&m_volumeCommitTimer, &QTimer::timeout, this, &AudioDevice::flushPendingVolume);
 }
 
 void AudioDevice::setName(const QString &n)
@@ -49,8 +54,9 @@ void AudioDevice::setMutedInternal(bool m)
 
 void AudioDevice::setVolume(double v)
 {
-    if (m_backend)
-        m_backend->setDeviceVolume(m_id, v);
+    m_pendingVolume = qBound(0.0, v, 1.0);
+    if (!m_volumeCommitTimer.isActive())
+        m_volumeCommitTimer.start();
 }
 
 void AudioDevice::setMuted(bool m)
@@ -62,6 +68,16 @@ void AudioDevice::setMuted(bool m)
 void AudioDevice::toggleMute()
 {
     setMuted(!muted());
+}
+
+void AudioDevice::flushPendingVolume()
+{
+    if (m_pendingVolume < 0.0)
+        return;
+    const double v = m_pendingVolume;
+    m_pendingVolume = -1.0;
+    if (m_backend)
+        m_backend->setDeviceVolume(m_id, v);
 }
 
 

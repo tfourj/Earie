@@ -2,6 +2,7 @@
 
 #include <QAbstractItemModel>
 #include <QObject>
+#include <QTimer>
 #include <QString>
 
 #include "SessionListModel.h"
@@ -44,6 +45,8 @@ signals:
     void changed();
 
 private:
+    void flushPendingVolume();
+
     AudioBackend *m_backend = nullptr;
     QString m_id;
     QString m_name;
@@ -51,6 +54,9 @@ private:
     double m_volume = 1.0;
     bool m_muted = false;
     SessionListModel *m_sessions = nullptr;
+
+    QTimer m_volumeCommitTimer;
+    double m_pendingVolume = -1.0;
 };
 
 

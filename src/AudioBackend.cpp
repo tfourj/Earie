@@ -105,11 +105,26 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
     bool anyDevicesChanged = false;
     bool anyProcessesChanged = false;
 
+    // Track default device status for tray icon behavior (EarTrumpet-like).
+    bool foundDefault = false;
+    QString defId;
+    QString defName;
+    double defVol = 1.0;
+    bool defMuted = false;
+
     QSet<QString> keepDeviceIds;
 
     for (const auto &ds : devices) {
         if (ds.id.isEmpty())
             continue;
+
+        if (ds.isDefault && !foundDefault) {
+            foundDefault = true;
+            defId = ds.id;
+            defName = ds.name;
+            defVol = ds.volume;
+            defMuted = ds.muted;
+        }
 
         if (m_config && m_config->isDeviceHidden(ds.id))
             continue;
@@ -123,7 +138,9 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         if (!dev) {
             dev = new AudioDevice(this, ds.id, ds.name, this);
             m_deviceById.insert(ds.id, dev);
-            // Insert in model order (as received).
+        }
+        // Ensure it's present in the model (it may exist in cache but be filtered out previously).
+        if (m_deviceModel->indexOfDeviceId(ds.id) < 0) {
             m_deviceModel->insertDevice(m_deviceModel->rowCount(), dev);
             anyDevicesChanged = true;
         }
@@ -160,15 +177,18 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
                 sess->setMutedInternal(ss.muted);
                 sess->setActiveInternal(ss.active);
                 map.insert(key, sess);
-
-                dev->sessionsModelTyped()->insertSession(dev->sessionsModelTyped()->rowCount(), sess);
-                anyProcessesChanged = true;
             } else {
                 sess->setDisplayName(ss.displayName);
                 sess->setIconKey(m_iconCache ? m_iconCache->ensureIconForExePath(ss.exePath) : ss.exePath);
                 sess->setVolumeInternal(ss.volume);
                 sess->setMutedInternal(ss.muted);
                 sess->setActiveInternal(ss.active);
+            }
+
+            // Ensure it's present in the model (it may exist in cache but be filtered out previously).
+            if (dev->sessionsModelTyped()->indexOf(sess->pid(), sess->exePath()) < 0) {
+                dev->sessionsModelTyped()->insertSession(dev->sessionsModelTyped()->rowCount(), sess);
+                anyProcessesChanged = true;
             }
         }
 
@@ -177,14 +197,14 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         for (const auto &k : existingKeys) {
             if (keepSessions.contains(k))
                 continue;
-            AudioSession *sess = map.take(k);
+            AudioSession *sess = map.value(k, nullptr);
             if (!sess)
                 continue;
             const int row = dev->sessionsModelTyped()->indexOf(sess->pid(), sess->exePath());
-            if (row >= 0)
+            if (row >= 0) {
                 dev->sessionsModelTyped()->removeSessionAt(row);
-            sess->deleteLater();
-            anyProcessesChanged = true;
+                anyProcessesChanged = true;
+            }
         }
     }
 
@@ -193,25 +213,33 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
     for (const auto &id : existingDeviceIds) {
         if (keepDeviceIds.contains(id))
             continue;
-        AudioDevice *dev = m_deviceById.take(id);
+        AudioDevice *dev = m_deviceById.value(id, nullptr);
         if (!dev)
             continue;
 
         const int row = m_deviceModel->indexOfDeviceId(id);
         if (row >= 0)
             m_deviceModel->removeDeviceAt(row);
-
-        // Cleanup sessions.
-        auto map = m_sessionByKeyByDevice.take(id);
-        for (auto *s : map)
-            if (s) s->deleteLater();
-
-        dev->deleteLater();
         anyDevicesChanged = true;
-        anyProcessesChanged = true;
     }
 
-    rebuildMenusIfChanged(anyDevicesChanged, anyProcessesChanged);
+    // Update cached default device info (even if default device is hidden / not currently displayed).
+    const bool defaultChanged =
+        (m_hasDefaultDevice != foundDefault
+         || m_defaultDeviceId != defId
+         || m_defaultDeviceName != defName
+         || !qFuzzyCompare(m_defaultDeviceVolume, defVol)
+         || m_defaultDeviceMuted != defMuted);
+
+    if (defaultChanged) {
+        m_hasDefaultDevice = foundDefault;
+        m_defaultDeviceId = defId;
+        m_defaultDeviceName = defName;
+        m_defaultDeviceVolume = defVol;
+        m_defaultDeviceMuted = defMuted;
+    }
+
+    rebuildMenusIfChanged(anyDevicesChanged || defaultChanged, anyProcessesChanged);
 }
 
 QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const

@@ -41,6 +41,12 @@ public:
     DeviceListModel *deviceModel() const { return m_deviceModel; }
     IconCache *iconCache() const { return m_iconCache; }
 
+    bool hasDefaultDevice() const { return m_hasDefaultDevice; }
+    QString defaultDeviceId() const { return m_defaultDeviceId; }
+    QString defaultDeviceName() const { return m_defaultDeviceName; }
+    double defaultDeviceVolume() const { return m_defaultDeviceVolume; } // 0..1
+    bool defaultDeviceMuted() const { return m_defaultDeviceMuted; }
+
     QVector<DeviceSnapshot> devicesSnapshot() const;
     QVector<DeviceSnapshot> devicesSnapshotAll() const; // includes hidden + regardless of mode
     QVector<ProcessSnapshot> knownProcessesSnapshot() const;
@@ -76,6 +82,12 @@ private:
     QHash<QString, QHash<QString, AudioSession *>> m_sessionByKeyByDevice;
 
     QVector<DeviceState> m_lastSnapshot;
+
+    bool m_hasDefaultDevice = false;
+    QString m_defaultDeviceId;
+    QString m_defaultDeviceName;
+    double m_defaultDeviceVolume = 1.0;
+    bool m_defaultDeviceMuted = false;
 };
 
 

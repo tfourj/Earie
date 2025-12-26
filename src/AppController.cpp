@@ -10,7 +10,9 @@
 #include <QAction>
 #include <QEvent>
 #include <QGuiApplication>
+#include <QPainter>
 #include <QMenu>
+#include <QPixmap>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QQmlContext>
@@ -20,9 +22,28 @@
 
 #include <windows.h>
 
+static QIcon makeEarieTrayIcon(double volume01, bool muted);
+
 AppController::AppController(QObject *parent)
     : QObject(parent)
 {
+    m_trayIconCoalesce.setSingleShot(true);
+    m_trayIconCoalesce.setInterval(60);
+    m_trayIconCoalesce.setParent(this);
+    connect(&m_trayIconCoalesce, &QTimer::timeout, this, [this]() {
+        if (m_pendingTrayVolPct < 0)
+            return;
+        const int pct = m_pendingTrayVolPct;
+        const bool muted = m_pendingTrayMuted;
+        m_pendingTrayVolPct = -1;
+
+        if (pct == m_lastTrayVolPct && muted == m_lastTrayMuted)
+            return;
+        m_lastTrayVolPct = pct;
+        m_lastTrayMuted = muted;
+
+        m_tray.setIcon(makeEarieTrayIcon(pct / 100.0, muted));
+    });
 }
 
 AppController::~AppController()
@@ -52,8 +73,10 @@ bool AppController::init()
     buildFlyout();
     buildTray();
     rebuildHiddenMenus();
+    updateTrayIcon();
 
     connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::rebuildHiddenMenus);
+    connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, &AppController::rebuildHiddenMenus);
     return true;
 }
@@ -243,7 +266,8 @@ void AppController::buildTray()
 
     m_tray.setToolTip(QStringLiteral("Earie"));
     m_tray.setContextMenu(m_menu);
-    m_tray.setIcon(QIcon::fromTheme(QStringLiteral("audio-volume-high")));
+    // Set a default icon before showing to avoid "No Icon set" warnings.
+    m_tray.setIcon(makeEarieTrayIcon(1.0, false));
     m_tray.show();
 
     connect(&m_tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
@@ -251,6 +275,88 @@ void AppController::buildTray()
             toggleFlyout(); // left-click
         }
     });
+}
+
+static QIcon makeEarieTrayIcon(double volume01, bool muted)
+{
+    // Draw a crisp monochrome (white) icon so it looks consistent on Windows 11.
+    // Uses Segoe MDL2 Assets glyphs.
+    const QString glyphSpeaker(QChar(0xE767));
+    const QString glyphMute(QChar(0xE74F));
+
+    const bool isMuted = muted || volume01 <= 0.001;
+    const QString glyph = isMuted ? glyphMute : glyphSpeaker;
+
+    auto render = [&](int px) -> QPixmap {
+        QPixmap pm(px, px);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setRenderHint(QPainter::TextAntialiasing, true);
+
+        QFont font(QStringLiteral("Segoe MDL2 Assets"));
+        // Make the glyph visually larger (tray size is OS-controlled, but this improves readability).
+        font.setPixelSize(static_cast<int>(px * 0.88));
+        p.setFont(font);
+        p.setPen(QColor(245, 245, 245));
+
+        // Center glyph.
+        p.drawText(pm.rect().adjusted(0, -1, 0, 0), Qt::AlignCenter, glyph);
+
+        // Add simple "volume waves" for non-muted states (EarTrumpet-like hint).
+        if (!isMuted) {
+            QPen pen(QColor(245, 245, 245));
+            pen.setWidthF(qMax(1.0, px / 18.0));
+            pen.setCapStyle(Qt::RoundCap);
+            p.setPen(pen);
+
+            const QPointF c(px * 0.64, px * 0.52);
+            const double r1 = px * 0.15;
+            const double r2 = px * 0.22;
+            const int start = -40 * 16;
+            const int span = 80 * 16;
+
+            if (volume01 > 0.15) {
+                QRectF rc1(c.x() - r1, c.y() - r1, r1 * 2, r1 * 2);
+                p.drawArc(rc1, start, span);
+            }
+            if (volume01 > 0.55) {
+                QRectF rc2(c.x() - r2, c.y() - r2, r2 * 2, r2 * 2);
+                p.drawArc(rc2, start, span);
+            }
+        }
+
+        return pm;
+    };
+
+    QIcon icon;
+    icon.addPixmap(render(16));
+    icon.addPixmap(render(20));
+    icon.addPixmap(render(24));
+    icon.addPixmap(render(32));
+    icon.addPixmap(render(48));
+    icon.addPixmap(render(64));
+    icon.addPixmap(render(96));
+    icon.addPixmap(render(128));
+    return icon;
+}
+
+void AppController::updateTrayIcon()
+{
+    if (!m_audio)
+        return;
+
+    double vol = 1.0;
+    bool muted = false;
+    if (m_audio->hasDefaultDevice()) {
+        vol = m_audio->defaultDeviceVolume();
+        muted = m_audio->defaultDeviceMuted();
+    }
+    const int pct = qBound(0, static_cast<int>(qRound(vol * 100.0)), 100);
+    m_pendingTrayVolPct = pct;
+    m_pendingTrayMuted = muted;
+    if (!m_trayIconCoalesce.isActive())
+        m_trayIconCoalesce.start();
 }
 
 void AppController::positionFlyout()

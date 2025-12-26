@@ -54,7 +54,7 @@ Item {
                 Layout.fillWidth: true
                 color: theme.text
                 font.pixelSize: 14
-                text: "Volume Mixer"
+                text: "Earie"
             }
 
             Text {
