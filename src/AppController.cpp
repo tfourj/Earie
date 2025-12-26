@@ -10,7 +10,9 @@
 #include <QAction>
 #include <QEvent>
 #include <QGuiApplication>
+#include <QDesktopServices>
 #include <QMenu>
+#include <QProcess>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QQmlContext>
@@ -24,12 +26,16 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QSettings>
+#include <QUrl>
 #include <algorithm>
 
 #include <windows.h>
 
 static QIcon makeEarieTrayIcon(double volume01, bool muted);
 static QString trayMenuStyleSheet();
+static void openWindowsVolumeMixer();
+static void openWindowsPlaybackDevices();
+static void openWindowsSoundSettings();
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -418,6 +424,17 @@ void AppController::buildTray()
 
     m_menu->addSeparator();
 
+    QAction *aWinMixer = m_menu->addAction(tr("Windows Volume Mixer"));
+    connect(aWinMixer, &QAction::triggered, this, []() { openWindowsVolumeMixer(); });
+
+    QAction *aPlayback = m_menu->addAction(tr("Playback devices"));
+    connect(aPlayback, &QAction::triggered, this, []() { openWindowsPlaybackDevices(); });
+
+    QAction *aSoundSettings = m_menu->addAction(tr("Sound settings"));
+    connect(aSoundSettings, &QAction::triggered, this, []() { openWindowsSoundSettings(); });
+
+    m_menu->addSeparator();
+
     QAction *modeHeader = m_menu->addAction(tr("Mode"));
     modeHeader->setEnabled(false);
 
@@ -538,6 +555,36 @@ static QString trayMenuStyleSheet()
         "  border-radius: 3px;"
         "}"
     );
+}
+
+static void openWindowsVolumeMixer()
+{
+#if defined(Q_OS_WIN)
+    // Classic Windows volume mixer.
+    // (On Win11 this still works, though Microsoft is moving some UX into Settings.)
+    QProcess::startDetached(QStringLiteral("sndvol.exe"), {});
+#endif
+}
+
+static void openWindowsPlaybackDevices()
+{
+#if defined(Q_OS_WIN)
+    // Opens the classic Sound control panel (Playback tab available).
+    // Using control.exe tends to be more reliable than directly executing the .cpl.
+    QProcess::startDetached(QStringLiteral("control.exe"), { QStringLiteral("mmsys.cpl") });
+#endif
+}
+
+static void openWindowsSoundSettings()
+{
+#if defined(Q_OS_WIN)
+    // Modern Windows Settings page.
+    // Win11/10: ms-settings:sound
+    if (!QDesktopServices::openUrl(QUrl(QStringLiteral("ms-settings:sound")))) {
+        // Fallback to classic control panel.
+        openWindowsPlaybackDevices();
+    }
+#endif
 }
 
 void AppController::updateTrayIcon()
