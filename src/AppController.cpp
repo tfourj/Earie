@@ -43,6 +43,13 @@ AppController::AppController(QObject *parent)
 
         m_tray.setIcon(makeEarieTrayIcon(pct / 100.0, muted));
     });
+
+    m_trayToggleSuppressTimer.setSingleShot(true);
+    m_trayToggleSuppressTimer.setInterval(200);
+    m_trayToggleSuppressTimer.setParent(this);
+    connect(&m_trayToggleSuppressTimer, &QTimer::timeout, this, [this]() {
+        m_suppressNextTrayToggle = false;
+    });
 }
 
 AppController::~AppController()
@@ -62,6 +69,7 @@ bool AppController::init()
 
     m_allDevices = (m_config->mode() == ConfigStore::Mode::AllDevices);
     m_showSystemSessions = m_config->showSystemSessions();
+    m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
 
     m_audio = new AudioBackend(this);
     m_audio->setConfig(m_config);
@@ -102,6 +110,16 @@ void AppController::setShowSystemSessions(bool v)
     if (m_audio)
         m_audio->setShowSystemSessions(m_showSystemSessions);
     emit showSystemSessionsChanged();
+}
+
+void AppController::setShowProcessStatusOnHover(bool v)
+{
+    if (m_showProcessStatusOnHover == v)
+        return;
+    m_showProcessStatusOnHover = v;
+    if (m_config)
+        m_config->setShowProcessStatusOnHover(m_showProcessStatusOnHover);
+    emit showProcessStatusOnHoverChanged();
 }
 
 void AppController::toggleFlyout()
@@ -280,6 +298,11 @@ void AppController::buildTray()
     m_actionShowSystem->setChecked(m_showSystemSessions);
     connect(m_actionShowSystem, &QAction::toggled, this, &AppController::setShowSystemSessions);
 
+    m_actionShowHoverStatus = m_menu->addAction(tr("Show hover process status"));
+    m_actionShowHoverStatus->setCheckable(true);
+    m_actionShowHoverStatus->setChecked(m_showProcessStatusOnHover);
+    connect(m_actionShowHoverStatus, &QAction::toggled, this, &AppController::setShowProcessStatusOnHover);
+
     m_menu->addSeparator();
 
     m_hiddenDevicesMenu = m_menu->addMenu(tr("Hidden devices…"));
@@ -297,6 +320,12 @@ void AppController::buildTray()
 
     connect(&m_tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
         if (reason == QSystemTrayIcon::Trigger) {
+            // If the flyout just closed due to WindowDeactivate (often triggered by this same click),
+            // don't immediately re-open it.
+            if (m_suppressNextTrayToggle) {
+                m_suppressNextTrayToggle = false;
+                return;
+            }
             toggleFlyout(); // left-click
         }
     });
@@ -378,6 +407,11 @@ bool AppController::eventFilter(QObject *watched, QEvent *event)
     if (watched == m_view) {
         if (event->type() == QEvent::WindowDeactivate) {
             // Close on focus loss (EarTrumpet-like).
+            if (m_view && m_view->isVisible()) {
+                m_suppressNextTrayToggle = true;
+                if (!m_trayToggleSuppressTimer.isActive())
+                    m_trayToggleSuppressTimer.start();
+            }
             hideFlyout();
         }
     }

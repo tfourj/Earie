@@ -38,6 +38,7 @@ void ConfigStore::load()
     m_mode = (modeStr == QLatin1String("all")) ? Mode::AllDevices : Mode::DefaultDeviceOnly;
 
     m_showSystemSessions = o.value(QStringLiteral("showSystemSessions")).toBool(false);
+    m_showProcessStatusOnHover = o.value(QStringLiteral("showProcessStatusOnHover")).toBool(false);
 
     m_hiddenDevices.clear();
     for (const auto &v : o.value(QStringLiteral("hiddenDevices")).toArray()) {
@@ -84,6 +85,7 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("schemaVersion"), 1);
     o.insert(QStringLiteral("mode"), m_mode == Mode::AllDevices ? QStringLiteral("all") : QStringLiteral("default"));
     o.insert(QStringLiteral("showSystemSessions"), m_showSystemSessions);
+    o.insert(QStringLiteral("showProcessStatusOnHover"), m_showProcessStatusOnHover);
 
     {
         QJsonArray arr;
@@ -133,6 +135,14 @@ void ConfigStore::setShowSystemSessions(bool v)
     if (m_showSystemSessions == v)
         return;
     m_showSystemSessions = v;
+    emit changed();
+}
+
+void ConfigStore::setShowProcessStatusOnHover(bool v)
+{
+    if (m_showProcessStatusOnHover == v)
+        return;
+    m_showProcessStatusOnHover = v;
     emit changed();
 }
 

@@ -25,6 +25,9 @@ public:
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
 
+    bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
+    void setShowProcessStatusOnHover(bool v);
+
     bool isDeviceHidden(const QString &deviceId) const;
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
@@ -43,6 +46,7 @@ signals:
 private:
     Mode m_mode = Mode::DefaultDeviceOnly;
     bool m_showSystemSessions = false;
+    bool m_showProcessStatusOnHover = false;
 
     QSet<QString> m_hiddenDevices;
     QSet<QString> m_hiddenProcessesGlobal; // exePath

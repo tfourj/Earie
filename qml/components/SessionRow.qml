@@ -42,6 +42,13 @@ Item {
                 smooth: true
                 source: sessionObject && sessionObject.iconKey ? ("image://appicon/" + encodeURIComponent(sessionObject.iconKey)) : ""
             }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (sessionObject) sessionObject.toggleMute()
+            }
         }
 
         ToolButton {
@@ -126,10 +133,12 @@ Item {
         }
     }
 
-    ToolTip.visible: mouse.containsMouse && sessionObject
+    ToolTip.visible: appController && appController.showProcessStatusOnHover && mouse.containsMouse && sessionObject
     ToolTip.delay: 450
     ToolTip.text: sessionObject
-                  ? (sessionObject.displayName + "\n" + sessionObject.exePath + "\nPID: " + sessionObject.pid)
+                  ? (sessionObject.displayName
+                     + "\nStatus: " + (sessionObject.active ? "Active" : "Inactive")
+                     + "\nPID: " + sessionObject.pid)
                   : ""
 }
 

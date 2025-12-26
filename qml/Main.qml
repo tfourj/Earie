@@ -55,6 +55,37 @@ Item {
                 text: "Earie"
             }
 
+            ToolButton {
+                id: settingsBtn
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                padding: 0
+                font.family: theme.iconFont
+                font.pixelSize: 14
+                text: theme.glyphSettings
+
+                background: Rectangle {
+                    radius: 8
+                    color: settingsBtn.hovered ? theme.cellHover : "transparent"
+                }
+
+                onClicked: settingsMenu.open()
+
+                Menu {
+                    id: settingsMenu
+                    y: settingsBtn.height
+
+                    MenuItem {
+                        text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
+                        onTriggered: if (appController) appController.showSystemSessions = !appController.showSystemSessions
+                    }
+                    MenuItem {
+                        text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
+                        onTriggered: if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
+                    }
+                }
+            }
+
             Text {
                 id: modeText
                 color: theme.textMuted

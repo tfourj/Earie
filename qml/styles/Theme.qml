@@ -21,6 +21,7 @@ QtObject {
     readonly property string glyphSpeaker: "\uE767"
     readonly property string glyphMute: "\uE74F"
     readonly property string glyphChevron: "\uE70D"
+    readonly property string glyphSettings: "\uE713"
 }
 
 

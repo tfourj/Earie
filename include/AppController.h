@@ -17,6 +17,7 @@ class AppController final : public QObject
     Q_OBJECT
     Q_PROPERTY(bool allDevices READ allDevices WRITE setAllDevices NOTIFY allDevicesChanged)
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
+    Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -29,6 +30,9 @@ public:
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
 
+    bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
+    void setShowProcessStatusOnHover(bool v);
+
 public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
@@ -37,6 +41,7 @@ public slots:
 signals:
     void allDevicesChanged();
     void showSystemSessionsChanged();
+    void showProcessStatusOnHoverChanged();
 
 private slots:
     void rebuildHiddenMenus();
@@ -61,6 +66,7 @@ private:
     QAction *m_actionDefaultOnly = nullptr;
     QAction *m_actionAllDevices = nullptr;
     QAction *m_actionShowSystem = nullptr;
+    QAction *m_actionShowHoverStatus = nullptr;
 
     QPointer<QQuickView> m_view;
 
@@ -69,12 +75,19 @@ private:
 
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
+    bool m_showProcessStatusOnHover = false;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;
     bool m_pendingTrayMuted = false;
     int m_lastTrayVolPct = -1;
     bool m_lastTrayMuted = false;
+
+    // When the flyout closes due to WindowDeactivate (e.g. clicking the tray icon),
+    // the tray "activated" signal may arrive right after and would re-open it.
+    // We suppress the next toggle for a short window to make click-to-close reliable.
+    bool m_suppressNextTrayToggle = false;
+    QTimer m_trayToggleSuppressTimer;
 };
 
 
