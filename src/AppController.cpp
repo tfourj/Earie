@@ -17,6 +17,7 @@
 #include <QQmlEngine>
 #include <QScreen>
 #include <QTimer>
+#include <QAbstractItemModel>
 
 #include <windows.h>
 
@@ -170,6 +171,32 @@ void AppController::buildFlyout()
     m_view->setMaximumWidth(420);
 
     applyWindowEffectsIfPossible();
+
+    // Auto-resize while visible when switching modes / devices list changes.
+    if (m_audio && m_audio->deviceModel()) {
+        auto *model = static_cast<QAbstractItemModel *>(m_audio->deviceModel());
+        auto relayout = [this]() {
+            if (!m_view || !m_view->isVisible())
+                return;
+            // Layout/contentHeight may settle after a tick; measure twice.
+            QTimer::singleShot(0, this, [this]() {
+                if (!m_view || !m_view->isVisible())
+                    return;
+                adjustFlyoutHeightToContent();
+                positionFlyout();
+            });
+            QTimer::singleShot(80, this, [this]() {
+                if (!m_view || !m_view->isVisible())
+                    return;
+                adjustFlyoutHeightToContent();
+                positionFlyout();
+            });
+        };
+        connect(model, &QAbstractItemModel::rowsInserted, this, relayout);
+        connect(model, &QAbstractItemModel::rowsRemoved, this, relayout);
+        connect(model, &QAbstractItemModel::modelReset, this, relayout);
+        connect(model, &QAbstractItemModel::layoutChanged, this, relayout);
+    }
 }
 
 void AppController::adjustFlyoutHeightToContent()
@@ -192,8 +219,8 @@ void AppController::adjustFlyoutHeightToContent()
     QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
 
     const int margin = 12;
-    const int maxH = qMax(240, work.height() - margin * 2);
-    const int minH = 240;
+    const int maxH = qMax(200, work.height() - margin * 2);
+    const int minH = 160;
 
     int desired = hint > 0 ? hint : 520;
     desired = qBound(minH, desired, maxH);

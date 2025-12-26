@@ -18,9 +18,7 @@ Item {
         12*2
         + Math.max(topRow.implicitHeight, topRow.height)
         + 10
-        // Use realized geometry (childrenRect) instead of implicitHeight to avoid under-measuring
-        // before delegates are fully instantiated.
-        + listColumn.childrenRect.height
+        + listView.contentHeight
         + 4
     )
 
@@ -83,6 +81,10 @@ Item {
             spacing: 10
             boundsBehavior: Flickable.StopAtBounds
             model: deviceModel
+            // Smoothly keep equal spacing while reordering.
+            moveDisplaced: Transition {
+                NumberAnimation { properties: "x,y"; duration: 120; easing.type: Easing.OutCubic }
+            }
 
             delegate: Item {
                 id: row
@@ -90,10 +92,9 @@ Item {
                 height: cell.implicitHeight
                 property string deviceId: model.deviceId
 
-                // Drag the whole device cell to reorder.
-                Drag.active: dragHandler.active
-                Drag.source: row
-                Drag.supportedActions: Qt.MoveAction
+                // Drag the whole device cell to reorder (snap by moving the model).
+                // IMPORTANT: we do NOT move the delegate itself (prevents overlap).
+                property int _lastTargetIndex: -1
 
                 DeviceCell {
                     id: cell
@@ -101,20 +102,34 @@ Item {
                     deviceObject: model.deviceObject
                 }
 
-                DropArea {
-                    anchors.fill: parent
-                    onEntered: {
-                        if (drag.source && drag.source.deviceId && drag.source.deviceId !== row.deviceId) {
-                            if (audioBackend) audioBackend.moveDeviceBefore(drag.source.deviceId, row.deviceId)
-                        }
-                    }
-                }
-
                 DragHandler {
                     id: dragHandler
-                    target: row
+                    target: null
                     xAxis.enabled: false
                     yAxis.enabled: true
+
+                    onActiveChanged: {
+                        if (active) {
+                            row.z = 1000
+                            row.opacity = 0.95
+                            row._lastTargetIndex = -1
+                        } else {
+                            row.z = 0
+                            row.opacity = 1.0
+                            row._lastTargetIndex = -1
+                        }
+                    }
+
+                    onTranslationChanged: {
+                        // Find the index under the would-be dragged center and move there.
+                        // Use translation to compute where the pointer moved to.
+                        const midY = row.y + row.height / 2 + dragHandler.translation.y
+                        const idx = listView.indexAt(10, midY)
+                        if (idx >= 0 && idx !== index && idx !== row._lastTargetIndex) {
+                            row._lastTargetIndex = idx
+                            if (audioBackend) audioBackend.moveDeviceToIndex(row.deviceId, idx)
+                        }
+                    }
                 }
 
                 states: [

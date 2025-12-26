@@ -60,6 +60,7 @@ public:
 
 public slots:
     Q_INVOKABLE void moveDeviceBefore(const QString &movingDeviceId, const QString &beforeDeviceId);
+    Q_INVOKABLE void moveDeviceToIndex(const QString &movingDeviceId, int toIndex);
 
 signals:
     void devicesChanged();

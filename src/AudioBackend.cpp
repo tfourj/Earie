@@ -301,6 +301,37 @@ void AudioBackend::moveDeviceBefore(const QString &movingDeviceId, const QString
     emit devicesChanged();
 }
 
+void AudioBackend::moveDeviceToIndex(const QString &movingDeviceId, int toIndex)
+{
+    if (!m_deviceModel || !m_config)
+        return;
+    if (movingDeviceId.isEmpty())
+        return;
+
+    const int from = m_deviceModel->indexOfDeviceId(movingDeviceId);
+    if (from < 0)
+        return;
+
+    if (toIndex < 0)
+        toIndex = 0;
+    if (toIndex >= m_deviceModel->rowCount())
+        toIndex = m_deviceModel->rowCount() - 1;
+    if (from == toIndex)
+        return;
+
+    m_deviceModel->moveDevice(from, toIndex);
+
+    QStringList order;
+    order.reserve(m_deviceModel->rowCount());
+    for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+        auto *d = m_deviceModel->deviceAt(i);
+        if (d)
+            order.append(d->id());
+    }
+    m_config->setDeviceOrder(order);
+    emit devicesChanged();
+}
+
 QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const
 {
     QVector<DeviceSnapshot> out;
