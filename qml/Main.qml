@@ -88,6 +88,10 @@ Item {
                     y: settingsBtn.height
 
                     StyledMenuItem {
+                        text: "Hidden items..."
+                        onTriggered: if (appController) appController.showHiddenItemsWindow()
+                    }
+                    StyledMenuItem {
                         text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
                         onTriggered: if (appController) appController.showSystemSessions = !appController.showSystemSessions
                     }

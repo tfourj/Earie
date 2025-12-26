@@ -52,6 +52,7 @@ public:
     QVector<DeviceSnapshot> devicesSnapshotAll() const; // includes hidden + regardless of mode
     QVector<ProcessSnapshot> knownProcessesSnapshot() const;
     QVector<ProcessSnapshot> knownProcessesForDeviceSnapshot(const QString &deviceId) const;
+    QVector<ProcessSnapshot> knownProcessesForDeviceSnapshotAll(const QString &deviceId) const;
 
     // Called by QML via AudioDevice/AudioSession objects.
     void setDeviceVolume(const QString &deviceId, double volume01);

@@ -32,6 +32,10 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPixmap>
+#include <QVariant>
+#include <QHash>
+#include <QSet>
+#include <QVector>
 #include <algorithm>
 
 #include <windows.h>
@@ -86,6 +90,9 @@ AppController::~AppController()
     if (m_view) {
         m_view->removeEventFilter(this);
     }
+    if (m_hiddenView) {
+        m_hiddenView->removeEventFilter(this);
+    }
 }
 
 bool AppController::init()
@@ -118,6 +125,8 @@ bool AppController::init()
     connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::defaultDeviceChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, &AppController::rebuildHiddenMenus);
+    connect(m_audio, &AudioBackend::devicesChanged, this, [this]() { emit hiddenItemsChanged(); });
+    connect(m_audio, &AudioBackend::knownProcessesChanged, this, [this]() { emit hiddenItemsChanged(); });
 
     // If the user clicks the desktop while a QML menu is open, the flyout is already deactivated
     // (because the menu is its own native window), so WindowDeactivate won't fire again.
@@ -125,16 +134,23 @@ bool AppController::init()
     connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
         if (state == Qt::ApplicationActive)
             return;
-        if (!m_view || !m_view->isVisible())
+        const bool flyoutVisible = m_view && m_view->isVisible();
+        const bool hiddenVisible = m_hiddenView && m_hiddenView->isVisible();
+        if (!flyoutVisible && !hiddenVisible)
             return;
         // Clicking the tray icon often deactivates the app before the tray "activated" signal arrives.
         // If we close here without suppression, the next tray click will immediately re-open the flyout.
-        m_suppressNextTrayToggle = true;
-        if (!m_trayToggleSuppressTimer.isActive())
-            m_trayToggleSuppressTimer.start();
-        if (m_popupDepth > 0)
-            emit closeAllPopupsRequested();
-        hideFlyout();
+        if (flyoutVisible) {
+            m_suppressNextTrayToggle = true;
+            if (!m_trayToggleSuppressTimer.isActive())
+                m_trayToggleSuppressTimer.start();
+            if (m_popupDepth > 0)
+                emit closeAllPopupsRequested();
+            hideFlyout();
+        }
+        if (hiddenVisible) {
+            hideHiddenItemsWindow();
+        }
     });
     return true;
 }
@@ -170,6 +186,199 @@ QRect AppController::cursorScreenAvailableGeometry() const
     if (!s)
         s = QGuiApplication::primaryScreen();
     return s ? s->availableGeometry() : QRect(0, 0, 1920, 1080);
+}
+
+QVariantList AppController::hiddenDevicesSnapshot() const
+{
+    QVariantList out;
+    if (!m_audio || !m_config)
+        return out;
+
+    const auto devicesAll = m_audio->devicesSnapshotAll();
+    QSet<QString> seen;
+    for (const auto &d : devicesAll) {
+        if (d.id.isEmpty())
+            continue;
+        seen.insert(d.id);
+        QVariantMap m;
+        m.insert(QStringLiteral("deviceId"), d.id);
+        m.insert(QStringLiteral("name"), d.name.isEmpty() ? d.id : d.name);
+        m.insert(QStringLiteral("connected"), true);
+        m.insert(QStringLiteral("hidden"), m_config->isDeviceHidden(d.id));
+        out.append(m);
+    }
+
+    for (const auto &hiddenId : m_config->hiddenDevices()) {
+        if (hiddenId.isEmpty() || seen.contains(hiddenId))
+            continue;
+        QVariantMap m;
+        m.insert(QStringLiteral("deviceId"), hiddenId);
+        m.insert(QStringLiteral("name"), hiddenId);
+        m.insert(QStringLiteral("connected"), false);
+        m.insert(QStringLiteral("hidden"), true);
+        out.append(m);
+    }
+    return out;
+}
+
+QVariantList AppController::hiddenProcessesGlobalSnapshot() const
+{
+    QVariantList out;
+    if (!m_audio || !m_config)
+        return out;
+
+    const auto known = m_audio->knownProcessesSnapshot();
+    QHash<QString, QString> nameByExe;
+    nameByExe.reserve(known.size());
+    for (const auto &p : known) {
+        if (!p.exePath.isEmpty())
+            nameByExe.insert(p.exePath, p.displayName);
+    }
+    for (const auto &exe : m_config->hiddenProcessesGlobalSet()) {
+        if (exe.isEmpty())
+            continue;
+        if (!nameByExe.contains(exe)) {
+            const QString base = QFileInfo(exe).fileName();
+            nameByExe.insert(exe, base.isEmpty() ? exe : base);
+        }
+    }
+
+    QVector<QString> exes;
+    exes.reserve(nameByExe.size());
+    for (auto it = nameByExe.begin(); it != nameByExe.end(); ++it)
+        exes.push_back(it.key());
+    std::sort(exes.begin(), exes.end(), [&nameByExe](const QString &a, const QString &b) {
+        const QString an = nameByExe.value(a).toCaseFolded();
+        const QString bn = nameByExe.value(b).toCaseFolded();
+        if (an == bn)
+            return a.toCaseFolded() < b.toCaseFolded();
+        return an < bn;
+    });
+
+    for (const auto &exe : exes) {
+        const QString label = nameByExe.value(exe).isEmpty() ? exe : nameByExe.value(exe);
+        QVariantMap m;
+        m.insert(QStringLiteral("exePath"), exe);
+        m.insert(QStringLiteral("name"), label);
+        m.insert(QStringLiteral("hidden"), m_config->isProcessHiddenGlobal(exe));
+        out.append(m);
+    }
+    return out;
+}
+
+QVariantList AppController::hiddenProcessesPerDeviceSnapshot() const
+{
+    QVariantList out;
+    if (!m_audio || !m_config)
+        return out;
+
+    const auto devicesAll = m_audio->devicesSnapshotAll();
+    QSet<QString> visibleDevIds;
+    for (const auto &d : devicesAll)
+        visibleDevIds.insert(d.id);
+
+    const auto hiddenMap = m_config->hiddenProcessesPerDeviceMap();
+    for (const auto &d : devicesAll) {
+        if (m_config->isDeviceHidden(d.id))
+            continue;
+        QHash<QString, QString> perNameByExe;
+        const auto perDevKnown = m_audio->knownProcessesForDeviceSnapshotAll(d.id);
+        perNameByExe.reserve(perDevKnown.size());
+        for (const auto &p : perDevKnown) {
+            if (!p.exePath.isEmpty())
+                perNameByExe.insert(p.exePath, p.displayName);
+        }
+        const auto itHiddenSet = hiddenMap.constFind(d.id);
+        if (itHiddenSet != hiddenMap.constEnd()) {
+            for (const auto &exe : itHiddenSet.value()) {
+                if (exe.isEmpty())
+                    continue;
+                if (!perNameByExe.contains(exe)) {
+                    const QString base = QFileInfo(exe).fileName();
+                    perNameByExe.insert(exe, base.isEmpty() ? exe : base);
+                }
+            }
+        }
+
+        QVector<QString> exes;
+        exes.reserve(perNameByExe.size());
+        for (auto it = perNameByExe.begin(); it != perNameByExe.end(); ++it)
+            exes.push_back(it.key());
+        std::sort(exes.begin(), exes.end(), [&perNameByExe](const QString &a, const QString &b) {
+            const QString an = perNameByExe.value(a).toCaseFolded();
+            const QString bn = perNameByExe.value(b).toCaseFolded();
+            if (an == bn)
+                return a.toCaseFolded() < b.toCaseFolded();
+            return an < bn;
+        });
+
+        QVariantList procList;
+        for (const auto &exe : exes) {
+            const QString label = perNameByExe.value(exe).isEmpty() ? exe : perNameByExe.value(exe);
+            QVariantMap p;
+            p.insert(QStringLiteral("exePath"), exe);
+            p.insert(QStringLiteral("name"), label);
+            p.insert(QStringLiteral("hidden"), m_config->isProcessHiddenForDevice(d.id, exe));
+            procList.append(p);
+        }
+
+        QVariantMap dev;
+        dev.insert(QStringLiteral("deviceId"), d.id);
+        dev.insert(QStringLiteral("name"), d.name.isEmpty() ? d.id : d.name);
+        dev.insert(QStringLiteral("connected"), true);
+        dev.insert(QStringLiteral("processes"), procList);
+        out.append(dev);
+    }
+
+    for (auto it = hiddenMap.begin(); it != hiddenMap.end(); ++it) {
+        const QString devId = it.key();
+        if (devId.isEmpty() || visibleDevIds.contains(devId))
+            continue;
+        if (m_config->isDeviceHidden(devId))
+            continue;
+        const auto &exeSet = it.value();
+        if (exeSet.isEmpty())
+            continue;
+
+        QHash<QString, QString> perNameByExe;
+        for (const auto &exe : exeSet) {
+            if (exe.isEmpty())
+                continue;
+            const QString base = QFileInfo(exe).fileName();
+            perNameByExe.insert(exe, base.isEmpty() ? exe : base);
+        }
+
+        QVector<QString> exes;
+        exes.reserve(perNameByExe.size());
+        for (auto it2 = perNameByExe.begin(); it2 != perNameByExe.end(); ++it2)
+            exes.push_back(it2.key());
+        std::sort(exes.begin(), exes.end(), [&perNameByExe](const QString &a, const QString &b) {
+            const QString an = perNameByExe.value(a).toCaseFolded();
+            const QString bn = perNameByExe.value(b).toCaseFolded();
+            if (an == bn)
+                return a.toCaseFolded() < b.toCaseFolded();
+            return an < bn;
+        });
+
+        QVariantList procList;
+        for (const auto &exe : exes) {
+            const QString label = perNameByExe.value(exe).isEmpty() ? exe : perNameByExe.value(exe);
+            QVariantMap p;
+            p.insert(QStringLiteral("exePath"), exe);
+            p.insert(QStringLiteral("name"), label);
+            p.insert(QStringLiteral("hidden"), m_config->isProcessHiddenForDevice(devId, exe));
+            procList.append(p);
+        }
+
+        QVariantMap dev;
+        dev.insert(QStringLiteral("deviceId"), devId);
+        dev.insert(QStringLiteral("name"), devId);
+        dev.insert(QStringLiteral("connected"), false);
+        dev.insert(QStringLiteral("processes"), procList);
+        out.append(dev);
+    }
+
+    return out;
 }
 
 void AppController::popupOpened()
@@ -238,6 +447,18 @@ void AppController::toggleFlyout()
         showFlyout();
 }
 
+void AppController::setDeviceHidden(const QString &deviceId, bool hidden)
+{
+    if (!m_config || deviceId.isEmpty())
+        return;
+    m_config->setDeviceHidden(deviceId, hidden);
+    if (m_audio)
+        m_audio->refresh();
+    rebuildHiddenMenus();
+    requestRelayout();
+    emit hiddenItemsChanged();
+}
+
 void AppController::setProcessHiddenGlobal(const QString &exePath, bool hidden)
 {
     if (!m_config || exePath.isEmpty())
@@ -247,6 +468,7 @@ void AppController::setProcessHiddenGlobal(const QString &exePath, bool hidden)
         m_audio->refresh();
     rebuildHiddenMenus();
     requestRelayout();
+    emit hiddenItemsChanged();
 }
 
 void AppController::setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden)
@@ -258,6 +480,7 @@ void AppController::setProcessHiddenForDevice(const QString &deviceId, const QSt
         m_audio->refresh();
     rebuildHiddenMenus();
     requestRelayout();
+    emit hiddenItemsChanged();
 }
 
 void AppController::requestRelayout()
@@ -304,6 +527,53 @@ void AppController::hideFlyout()
     if (!m_view)
         return;
     m_view->hide();
+}
+
+void AppController::showHiddenItemsWindow()
+{
+    if (!m_hiddenView)
+        buildHiddenItemsWindow();
+    if (!m_hiddenView)
+        return;
+
+    adjustHiddenItemsHeightToContent();
+    positionHiddenItemsWindow(true);
+    m_hiddenView->show();
+    m_hiddenView->requestActivate();
+
+    QTimer::singleShot(0, this, [this]() {
+        if (!m_hiddenView || !m_hiddenView->isVisible())
+            return;
+        adjustHiddenItemsHeightToContent();
+        positionHiddenItemsWindow(false);
+    });
+    QTimer::singleShot(50, this, [this]() {
+        if (!m_hiddenView || !m_hiddenView->isVisible())
+            return;
+        adjustHiddenItemsHeightToContent();
+        positionHiddenItemsWindow(false);
+    });
+}
+
+void AppController::requestHiddenItemsRelayout()
+{
+    if (!m_hiddenView || !m_hiddenView->isVisible())
+        return;
+    adjustHiddenItemsHeightToContent();
+    positionHiddenItemsWindow(false);
+    QTimer::singleShot(80, this, [this]() {
+        if (!m_hiddenView || !m_hiddenView->isVisible())
+            return;
+        adjustHiddenItemsHeightToContent();
+        positionHiddenItemsWindow(false);
+    });
+}
+
+void AppController::hideHiddenItemsWindow()
+{
+    if (!m_hiddenView)
+        return;
+    m_hiddenView->hide();
 }
 
 void AppController::showAboutDialog()
@@ -376,7 +646,7 @@ void AppController::buildFlyout()
     m_view->setMinimumWidth(420);
     m_view->setMaximumWidth(420);
 
-    applyWindowEffectsIfPossible();
+    applyWindowEffectsIfPossible(m_view);
 
     // Auto-resize while visible when switching modes / devices list changes.
     if (m_audio && m_audio->deviceModel()) {
@@ -403,6 +673,27 @@ void AppController::buildFlyout()
         connect(model, &QAbstractItemModel::modelReset, this, relayout);
         connect(model, &QAbstractItemModel::layoutChanged, this, relayout);
     }
+}
+
+void AppController::buildHiddenItemsWindow()
+{
+    if (m_hiddenView)
+        return;
+
+    m_hiddenView = new QQuickView;
+    m_hiddenView->setResizeMode(QQuickView::SizeRootObjectToView);
+    m_hiddenView->setColor(Qt::transparent);
+    m_hiddenView->setFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
+    m_hiddenView->installEventFilter(this);
+
+    m_hiddenView->rootContext()->setContextProperty(QStringLiteral("appController"), this);
+    m_hiddenView->setSource(QUrl(QStringLiteral("qrc:/qml/HiddenItemsWindow.qml")));
+    m_hiddenView->setWidth(420);
+    m_hiddenView->setHeight(520);
+    m_hiddenView->setMinimumWidth(420);
+    m_hiddenView->setMaximumWidth(420);
+
+    applyWindowEffectsIfPossible(m_hiddenView);
 }
 
 void AppController::adjustFlyoutHeightToContent()
@@ -437,6 +728,42 @@ void AppController::adjustFlyoutHeightToContent()
     m_view->resize(m_view->width(), desired);
 }
 
+void AppController::adjustHiddenItemsHeightToContent()
+{
+    if (!m_hiddenView)
+        return;
+
+    QObject *root = m_hiddenView->rootObject();
+    int hint = 0;
+    if (root) {
+        const QVariant v = root->property("contentHeightHint");
+        if (v.isValid())
+            hint = v.toInt();
+    }
+
+    QScreen *screen = nullptr;
+    if (m_hiddenView && m_hiddenView->isVisible())
+        screen = QGuiApplication::screenAt(m_hiddenView->geometry().center());
+    if (!screen && m_view && m_view->isVisible())
+        screen = QGuiApplication::screenAt(m_view->geometry().center());
+    if (!screen)
+        screen = QGuiApplication::screenAt(QCursor::pos());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+
+    QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+    const int margin = 12;
+    const int maxH = qMax(220, work.height() - margin * 2);
+    const int minH = 200;
+
+    int desired = hint > 0 ? hint : 520;
+    desired = qBound(minH, desired, maxH);
+
+    m_hiddenView->setMinimumHeight(desired);
+    m_hiddenView->setMaximumHeight(desired);
+    m_hiddenView->resize(m_hiddenView->width(), desired);
+}
+
 void AppController::applyStartWithWindows(bool v)
 {
     QSettings runKey(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
@@ -450,11 +777,11 @@ void AppController::applyStartWithWindows(bool v)
     }
 }
 
-void AppController::applyWindowEffectsIfPossible()
+void AppController::applyWindowEffectsIfPossible(QQuickView *view)
 {
-    if (!m_view)
+    if (!view)
         return;
-    HWND hwnd = reinterpret_cast<HWND>(m_view->winId());
+    HWND hwnd = reinterpret_cast<HWND>(view->winId());
     WinAcrylic::enableAcrylic(hwnd);
 }
 
@@ -525,8 +852,8 @@ void AppController::buildTray()
 
     m_menu->addSeparator();
 
-    m_hiddenDevicesMenu = m_menu->addMenu(tr("Hidden devices…"));
-    m_hiddenProcessesMenu = m_menu->addMenu(tr("Hidden processes…"));
+    QAction *aHiddenItems = m_menu->addAction(tr("Manage hidden items…"));
+    connect(aHiddenItems, &QAction::triggered, this, &AppController::showHiddenItemsWindow);
 
     m_menu->addSeparator();
 
@@ -700,6 +1027,51 @@ void AppController::positionFlyout()
     m_view->setPosition(WinTrayPositioner::suggestFlyoutTopLeft(w, h));
 }
 
+void AppController::positionHiddenItemsWindow(bool recomputeAnchor)
+{
+    if (!m_hiddenView)
+        return;
+
+    const int w = m_hiddenView->width();
+    const int h = m_hiddenView->height();
+    const int margin = 12;
+
+    if (recomputeAnchor || !m_hiddenAnchorValid) {
+        QScreen *screen = nullptr;
+        if (m_view && m_view->isVisible())
+            screen = QGuiApplication::screenAt(m_view->geometry().center());
+        if (!screen)
+            screen = QGuiApplication::screenAt(QCursor::pos());
+        if (!screen)
+            screen = QGuiApplication::primaryScreen();
+
+        QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+        int x = work.right() - w - margin;
+        int y = m_view && m_view->isVisible() ? m_view->y() : (QCursor::pos().y() - h / 2);
+        x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
+        y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
+
+        m_hiddenAnchorPos = QPoint(x, y);
+        m_hiddenAnchorWork = work;
+        m_hiddenAnchorValid = true;
+    }
+
+    QRect work = m_hiddenAnchorWork;
+    if (!work.isValid()) {
+        QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+        if (!screen)
+            screen = QGuiApplication::primaryScreen();
+        work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+    }
+
+    int x = m_hiddenAnchorPos.x();
+    int y = m_hiddenAnchorPos.y();
+    x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
+    y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
+
+    m_hiddenView->setPosition(QPoint(x, y));
+}
+
 bool AppController::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == m_view) {
@@ -716,6 +1088,12 @@ bool AppController::eventFilter(QObject *watched, QEvent *event)
             }
             hideFlyout();
         }
+    } else if (watched == m_hiddenView) {
+        if (event->type() == QEvent::WindowDeactivate) {
+            if (m_popupDepth > 0)
+                return QObject::eventFilter(watched, event);
+            hideHiddenItemsWindow();
+        }
     }
     return QObject::eventFilter(watched, event);
 }
@@ -729,6 +1107,7 @@ void AppController::rebuildHiddenMenus()
     // QWidgetAction widgets getting destroyed during signal delivery.
     if (m_menu && m_menu->isVisible()) {
         m_deferHiddenMenuRebuild = true;
+        emit hiddenItemsChanged();
         return;
     }
 
@@ -767,6 +1146,7 @@ void AppController::rebuildHiddenMenus()
             addCheckItem(m_hiddenDevicesMenu, d.name, m_config->isDeviceHidden(d.id), [this, id = d.id](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh(); // re-filter
+                emit hiddenItemsChanged();
             });
         }
 
@@ -777,6 +1157,7 @@ void AppController::rebuildHiddenMenus()
             addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(hiddenId), true, [this, id = hiddenId](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh();
+                emit hiddenItemsChanged();
             });
         }
     }
@@ -929,6 +1310,8 @@ void AppController::rebuildHiddenMenus()
             }
         }
     }
+
+    emit hiddenItemsChanged();
 }
 
 

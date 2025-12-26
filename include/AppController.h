@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QPoint>
 #include <QRect>
+#include <QVariant>
 
 class QMenu;
 class QAction;
@@ -43,12 +44,19 @@ public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
+    Q_INVOKABLE void showHiddenItemsWindow();
+    Q_INVOKABLE void hideHiddenItemsWindow();
     // Called by QML when content height changes (e.g. sessions hidden/unhidden).
     Q_INVOKABLE void requestRelayout();
+    Q_INVOKABLE void requestHiddenItemsRelayout();
+    Q_INVOKABLE void setDeviceHidden(const QString &deviceId, bool hidden);
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
     Q_INVOKABLE QPoint cursorPos() const;
     Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
+    Q_INVOKABLE QVariantList hiddenDevicesSnapshot() const;
+    Q_INVOKABLE QVariantList hiddenProcessesGlobalSnapshot() const;
+    Q_INVOKABLE QVariantList hiddenProcessesPerDeviceSnapshot() const;
     Q_INVOKABLE void popupOpened();
     Q_INVOKABLE void popupClosed();
     void showAboutDialog();
@@ -59,6 +67,7 @@ signals:
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
     void closeAllPopupsRequested();
+    void hiddenItemsChanged();
 
 private slots:
     void rebuildHiddenMenus();
@@ -66,11 +75,14 @@ private slots:
 private:
     void buildTray();
     void buildFlyout();
+    void buildHiddenItemsWindow();
     void positionFlyout();
+    void positionHiddenItemsWindow(bool recomputeAnchor);
     void adjustFlyoutHeightToContent();
+    void adjustHiddenItemsHeightToContent();
     void setStartWithWindows(bool v);
     void applyStartWithWindows(bool v);
-    void applyWindowEffectsIfPossible();
+    void applyWindowEffectsIfPossible(QQuickView *view);
     void updateTrayIcon();
 
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -87,6 +99,11 @@ private:
     QAction *m_actionStartWithWindows = nullptr;
 
     QPointer<QQuickView> m_view;
+    QPointer<QQuickView> m_hiddenView;
+
+    QPoint m_hiddenAnchorPos;
+    QRect m_hiddenAnchorWork;
+    bool m_hiddenAnchorValid = false;
 
     QPointer<AudioBackend> m_audio;
     QPointer<ConfigStore> m_config;

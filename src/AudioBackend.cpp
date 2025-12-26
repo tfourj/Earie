@@ -443,6 +443,27 @@ QVector<AudioBackend::ProcessSnapshot> AudioBackend::knownProcessesForDeviceSnap
     return out;
 }
 
+QVector<AudioBackend::ProcessSnapshot> AudioBackend::knownProcessesForDeviceSnapshotAll(const QString &deviceId) const
+{
+    QHash<QString, QString> uniq;
+    for (const auto &ds : m_lastSnapshot) {
+        if (ds.id != deviceId)
+            continue;
+        for (const auto &ss : ds.sessions) {
+            if (ss.exePath.isEmpty())
+                continue;
+            uniq.insert(ss.exePath, ss.displayName);
+        }
+        break;
+    }
+    QVector<ProcessSnapshot> out;
+    out.reserve(uniq.size());
+    for (auto it = uniq.begin(); it != uniq.end(); ++it) {
+        out.push_back({ it.key(), it.value().isEmpty() ? it.key() : it.value() });
+    }
+    return out;
+}
+
 void AudioBackend::setDeviceVolume(const QString &deviceId, double volume01)
 {
     if (auto *d = m_deviceById.value(deviceId, nullptr))
