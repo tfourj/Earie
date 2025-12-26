@@ -10,9 +10,7 @@
 #include <QAction>
 #include <QEvent>
 #include <QGuiApplication>
-#include <QPainter>
 #include <QMenu>
-#include <QPixmap>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QQmlContext>
@@ -279,65 +277,20 @@ void AppController::buildTray()
 
 static QIcon makeEarieTrayIcon(double volume01, bool muted)
 {
-    // Draw a crisp monochrome (white) icon so it looks consistent on Windows 11.
-    // Uses Segoe MDL2 Assets glyphs.
-    const QString glyphSpeaker(QChar(0xE767));
-    const QString glyphMute(QChar(0xE74F));
+    const double v = qBound(0.0, volume01, 1.0);
+    const int bars = muted
+        ? -1
+        : (v < 0.05 ? 0 : (v < 0.33 ? 1 : (v < 0.66 ? 2 : 3)));
 
-    const bool isMuted = muted || volume01 <= 0.001;
-    const QString glyph = isMuted ? glyphMute : glyphSpeaker;
+    const QString path = (bars < 0)
+        ? QStringLiteral(":/assets/vol_m.ico")
+        : QStringLiteral(":/assets/vol_%1.ico").arg(bars);
 
-    auto render = [&](int px) -> QPixmap {
-        QPixmap pm(px, px);
-        pm.fill(Qt::transparent);
-        QPainter p(&pm);
-        p.setRenderHint(QPainter::Antialiasing, true);
-        p.setRenderHint(QPainter::TextAntialiasing, true);
-
-        QFont font(QStringLiteral("Segoe MDL2 Assets"));
-        // Make the glyph visually larger (tray size is OS-controlled, but this improves readability).
-        font.setPixelSize(static_cast<int>(px * 0.88));
-        p.setFont(font);
-        p.setPen(QColor(245, 245, 245));
-
-        // Center glyph.
-        p.drawText(pm.rect().adjusted(0, -1, 0, 0), Qt::AlignCenter, glyph);
-
-        // Add simple "volume waves" for non-muted states (EarTrumpet-like hint).
-        if (!isMuted) {
-            QPen pen(QColor(245, 245, 245));
-            pen.setWidthF(qMax(1.0, px / 18.0));
-            pen.setCapStyle(Qt::RoundCap);
-            p.setPen(pen);
-
-            const QPointF c(px * 0.64, px * 0.52);
-            const double r1 = px * 0.15;
-            const double r2 = px * 0.22;
-            const int start = -40 * 16;
-            const int span = 80 * 16;
-
-            if (volume01 > 0.15) {
-                QRectF rc1(c.x() - r1, c.y() - r1, r1 * 2, r1 * 2);
-                p.drawArc(rc1, start, span);
-            }
-            if (volume01 > 0.55) {
-                QRectF rc2(c.x() - r2, c.y() - r2, r2 * 2, r2 * 2);
-                p.drawArc(rc2, start, span);
-            }
-        }
-
-        return pm;
-    };
-
-    QIcon icon;
-    icon.addPixmap(render(16));
-    icon.addPixmap(render(20));
-    icon.addPixmap(render(24));
-    icon.addPixmap(render(32));
-    icon.addPixmap(render(48));
-    icon.addPixmap(render(64));
-    icon.addPixmap(render(96));
-    icon.addPixmap(render(128));
+    QIcon icon(path);
+    if (icon.isNull()) {
+        // Safety fallback (should not happen if resources are embedded)
+        icon = QIcon::fromTheme(QStringLiteral("audio-volume-high"));
+    }
     return icon;
 }
 

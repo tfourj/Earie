@@ -6,6 +6,11 @@
         <file>qml/components/SessionRow.qml</file>
         <file>qml/styles/Theme.qml</file>
         <file>qml/styles/SliderStyle.qml</file>
+        <file>assets/vol_0.ico</file>
+        <file>assets/vol_1.ico</file>
+        <file>assets/vol_2.ico</file>
+        <file>assets/vol_3.ico</file>
+        <file>assets/vol_m.ico</file>
     </qresource>
 </RCC>
 
