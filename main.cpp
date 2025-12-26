@@ -1,6 +1,8 @@
 #include <QApplication>
 #include <QIcon>
+#include <QMessageBox>
 #include <QQuickStyle>
+#include <QSharedMemory>
 
 #include "AppController.h"
 
@@ -14,6 +16,14 @@ int main(int argc, char *argv[])
     app.setQuitOnLastWindowClosed(false);
     app.setApplicationName(QStringLiteral("Earie"));
     app.setOrganizationName(QStringLiteral("Earie"));
+
+    QSharedMemory instanceGuard(QStringLiteral("Earie.SingleInstance"));
+    if (!instanceGuard.create(1)) {
+        QMessageBox::warning(nullptr,
+                             QStringLiteral("Earie"),
+                             QStringLiteral("Earie is already running."));
+        return 0;
+    }
 
     AppController controller;
     if (!controller.init()) {
