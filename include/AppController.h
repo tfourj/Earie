@@ -44,6 +44,7 @@ private:
     void buildTray();
     void buildFlyout();
     void positionFlyout();
+    void adjustFlyoutHeightToContent();
     void applyWindowEffectsIfPossible();
 
     bool eventFilter(QObject *watched, QEvent *event) override;

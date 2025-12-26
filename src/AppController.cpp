@@ -16,6 +16,7 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QScreen>
+#include <QTimer>
 
 #include <windows.h>
 
@@ -95,9 +96,24 @@ void AppController::showFlyout()
 {
     if (!m_view)
         return;
+    adjustFlyoutHeightToContent();
     positionFlyout();
     m_view->show();
     m_view->requestActivate();
+
+    // QML layout/delegates may settle a tick later; re-measure after show.
+    QTimer::singleShot(0, this, [this]() {
+        if (!m_view || !m_view->isVisible())
+            return;
+        adjustFlyoutHeightToContent();
+        positionFlyout();
+    });
+    QTimer::singleShot(50, this, [this]() {
+        if (!m_view || !m_view->isVisible())
+            return;
+        adjustFlyoutHeightToContent();
+        positionFlyout();
+    });
 }
 
 void AppController::hideFlyout()
@@ -133,6 +149,38 @@ void AppController::buildFlyout()
     m_view->setMaximumWidth(420);
 
     applyWindowEffectsIfPossible();
+}
+
+void AppController::adjustFlyoutHeightToContent()
+{
+    if (!m_view)
+        return;
+
+    // Best-effort read of QML content height hint.
+    QObject *root = m_view->rootObject();
+    int hint = 0;
+    if (root) {
+        const QVariant v = root->property("contentHeightHint");
+        if (v.isValid())
+            hint = v.toInt();
+    }
+
+    // Clamp to screen work area (prevents going off-screen).
+    QRect trayGeom = m_tray.geometry();
+    QScreen *screen = trayGeom.isValid() ? QGuiApplication::screenAt(trayGeom.center()) : QGuiApplication::primaryScreen();
+    QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+
+    const int margin = 12;
+    const int maxH = qMax(240, work.height() - margin * 2);
+    const int minH = 240;
+
+    int desired = hint > 0 ? hint : 520;
+    desired = qBound(minH, desired, maxH);
+
+    // Apply. Width is already fixed.
+    m_view->setMinimumHeight(desired);
+    m_view->setMaximumHeight(desired);
+    m_view->resize(m_view->width(), desired);
 }
 
 void AppController::applyWindowEffectsIfPossible()

@@ -8,7 +8,21 @@ import "components"
 Item {
     id: root
     width: 420
-    height: 520
+    // Height is controlled by C++ (auto-fit to content, clamped to screen).
+    // Keep a reasonable implicit baseline for initial show.
+    implicitHeight: 420
+
+    // C++ reads this to auto-size the flyout height.
+    // Includes: margins (12*2) + header row + spacing + list content + bottom padding.
+    readonly property int contentHeightHint: Math.ceil(
+        12*2
+        + Math.max(topRow.implicitHeight, topRow.height)
+        + 10
+        // Use realized geometry (childrenRect) instead of implicitHeight to avoid under-measuring
+        // before delegates are fully instantiated.
+        + listColumn.childrenRect.height
+        + 4
+    )
 
     Styles.Theme { id: theme }
 
@@ -33,6 +47,7 @@ Item {
         spacing: 10
 
         RowLayout {
+            id: topRow
             Layout.fillWidth: true
 
             Text {
