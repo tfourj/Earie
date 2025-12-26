@@ -1,0 +1,71 @@
+#pragma once
+
+#include <QObject>
+#include <QPointer>
+#include <QSystemTrayIcon>
+
+class QMenu;
+class QAction;
+class QQuickView;
+
+class AudioBackend;
+class ConfigStore;
+
+class AppController final : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(bool allDevices READ allDevices WRITE setAllDevices NOTIFY allDevicesChanged)
+    Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
+public:
+    explicit AppController(QObject *parent = nullptr);
+    ~AppController() override;
+
+    bool init();
+
+    bool allDevices() const { return m_allDevices; }
+    void setAllDevices(bool v);
+
+    bool showSystemSessions() const { return m_showSystemSessions; }
+    void setShowSystemSessions(bool v);
+
+public slots:
+    Q_INVOKABLE void toggleFlyout();
+    Q_INVOKABLE void showFlyout();
+    Q_INVOKABLE void hideFlyout();
+
+signals:
+    void allDevicesChanged();
+    void showSystemSessionsChanged();
+
+private slots:
+    void rebuildHiddenMenus();
+
+private:
+    void buildTray();
+    void buildFlyout();
+    void positionFlyout();
+    void applyWindowEffectsIfPossible();
+
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
+    QSystemTrayIcon m_tray;
+    QPointer<QMenu> m_menu;
+    QPointer<QMenu> m_hiddenDevicesMenu;
+    QPointer<QMenu> m_hiddenProcessesMenu;
+
+    QAction *m_actionOpen = nullptr;
+    QAction *m_actionQuit = nullptr;
+    QAction *m_actionDefaultOnly = nullptr;
+    QAction *m_actionAllDevices = nullptr;
+    QAction *m_actionShowSystem = nullptr;
+
+    QPointer<QQuickView> m_view;
+
+    QPointer<AudioBackend> m_audio;
+    QPointer<ConfigStore> m_config;
+
+    bool m_allDevices = false;
+    bool m_showSystemSessions = false;
+};
+
+

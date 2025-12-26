@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/components/DeviceCell.qml</file>
+        <file>qml/components/DeviceMasterRow.qml</file>
+        <file>qml/components/SessionRow.qml</file>
+        <file>qml/styles/Theme.qml</file>
+        <file>qml/styles/SliderStyle.qml</file>
+    </qresource>
+</RCC>
+
+
