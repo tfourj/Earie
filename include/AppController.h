@@ -103,6 +103,9 @@ private:
 
     // Coalesce repeated relayout requests while QML is settling.
     QTimer m_relayoutCoalesce;
+
+    // Avoid rebuilding the tray menus while the tray context menu is open (causes flicker/close/crash).
+    bool m_deferHiddenMenuRebuild = false;
 };
 
 

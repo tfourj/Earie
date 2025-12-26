@@ -104,6 +104,7 @@ bool AppController::init()
 
     connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::rebuildHiddenMenus);
     connect(m_audio, &AudioBackend::devicesChanged, this, &AppController::updateTrayIcon);
+    connect(m_audio, &AudioBackend::defaultDeviceChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, &AppController::rebuildHiddenMenus);
     return true;
 }
@@ -354,6 +355,17 @@ void AppController::buildTray()
     // Note: On some Windows setups the tray context menu may still be partially native-looking.
     m_menu->setStyleSheet(trayMenuStyleSheet());
 
+    connect(m_menu, &QMenu::aboutToHide, this, [this]() {
+        if (!m_deferHiddenMenuRebuild)
+            return;
+        QTimer::singleShot(0, this, [this]() {
+            if (!m_deferHiddenMenuRebuild)
+                return;
+            m_deferHiddenMenuRebuild = false;
+            rebuildHiddenMenus();
+        });
+    });
+
     m_actionOpen = m_menu->addAction(tr("Open mixer"));
     connect(m_actionOpen, &QAction::triggered, this, &AppController::showFlyout);
 
@@ -553,6 +565,13 @@ void AppController::rebuildHiddenMenus()
 {
     if (!m_hiddenDevicesMenu || !m_hiddenProcessesMenu || !m_audio || !m_config)
         return;
+
+    // Never rebuild while the tray menu is open; it will close/flicker and can crash due to
+    // QWidgetAction widgets getting destroyed during signal delivery.
+    if (m_menu && m_menu->isVisible()) {
+        m_deferHiddenMenuRebuild = true;
+        return;
+    }
 
     m_hiddenDevicesMenu->clear();
     m_hiddenProcessesMenu->clear();

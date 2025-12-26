@@ -66,11 +66,12 @@ public slots:
 signals:
     void devicesChanged();
     void knownProcessesChanged();
+    void defaultDeviceChanged();
 
 private:
     void applySnapshot(const QVector<DeviceState> &devices);
     void applyPeaks(const QVector<SessionPeak> &peaks);
-    void rebuildMenusIfChanged(bool devicesChanged, bool processesChanged);
+    void rebuildMenusIfChanged(bool devicesChanged, bool processesChanged, bool defaultDeviceChanged);
 
     QPointer<ConfigStore> m_config;
     bool m_allDevices = false;

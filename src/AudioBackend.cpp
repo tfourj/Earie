@@ -317,7 +317,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         m_defaultDeviceMuted = defMuted;
     }
 
-    rebuildMenusIfChanged(anyDevicesChanged || defaultChanged, anyProcessesChanged);
+    rebuildMenusIfChanged(anyDevicesChanged, anyProcessesChanged, defaultChanged);
 }
 
 void AudioBackend::moveDeviceBefore(const QString &movingDeviceId, const QString &beforeDeviceId)
@@ -487,12 +487,14 @@ void AudioBackend::setSessionMuted(const QString &deviceId, quint32 pid, const Q
                                   Q_ARG(QString, exePath), Q_ARG(bool, muted));
 }
 
-void AudioBackend::rebuildMenusIfChanged(bool devicesChangedNow, bool processesChangedNow)
+void AudioBackend::rebuildMenusIfChanged(bool devicesChangedNow, bool processesChangedNow, bool defaultDeviceChangedNow)
 {
     if (devicesChangedNow)
         emit devicesChanged();
     if (processesChangedNow)
         emit knownProcessesChanged();
+    if (defaultDeviceChangedNow)
+        emit defaultDeviceChanged();
 }
 
 
