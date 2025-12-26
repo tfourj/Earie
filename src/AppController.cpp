@@ -84,6 +84,7 @@ bool AppController::init()
     m_allDevices = (m_config->mode() == ConfigStore::Mode::AllDevices);
     m_showSystemSessions = m_config->showSystemSessions();
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
+    m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
 
     m_audio = new AudioBackend(this);
     m_audio->setConfig(m_config);
@@ -134,6 +135,16 @@ void AppController::setShowProcessStatusOnHover(bool v)
     if (m_config)
         m_config->setShowProcessStatusOnHover(m_showProcessStatusOnHover);
     emit showProcessStatusOnHoverChanged();
+}
+
+void AppController::setScrollWheelVolumeOnHover(bool v)
+{
+    if (m_scrollWheelVolumeOnHover == v)
+        return;
+    m_scrollWheelVolumeOnHover = v;
+    if (m_config)
+        m_config->setScrollWheelVolumeOnHover(m_scrollWheelVolumeOnHover);
+    emit scrollWheelVolumeOnHoverChanged();
 }
 
 void AppController::toggleFlyout()

@@ -8,6 +8,7 @@ Item {
     id: root
     property var sessionObject
     readonly property real peak01: sessionObject ? sessionObject.peak : 0
+    property bool _wheelAdjusting: false
 
     Styles.Theme { id: theme }
 
@@ -120,10 +121,50 @@ Item {
                 Connections {
                     target: sessionObject
                     function onChanged() {
-                        if (!slider.pressed && sessionObject) {
+                        if (!slider.pressed && !root._wheelAdjusting && sessionObject) {
                             slider.value = sessionObject.volume
                         }
                     }
+                }
+            }
+
+            Timer {
+                id: wheelSyncHold
+                interval: 120
+                repeat: false
+                onTriggered: root._wheelAdjusting = false
+            }
+
+            // Optional: adjust volume with mouse wheel when hovering the slider.
+            WheelHandler {
+                id: wheel
+                enabled: appController && appController.scrollWheelVolumeOnHover
+                target: null
+                onWheel: function(ev) {
+                    if (!enabled)
+                        return
+                    if (!sessionObject || slider.pressed)
+                        return
+
+                    var steps = 0
+                    if (ev.angleDelta && ev.angleDelta.y) {
+                        var raw = ev.angleDelta.y / 120
+                        steps = raw > 0 ? Math.ceil(raw) : Math.floor(raw)
+                    } else if (ev.pixelDelta && ev.pixelDelta.y) {
+                        // Trackpads can report small pixel deltas; treat any non-zero as one step.
+                        steps = ev.pixelDelta.y > 0 ? 1 : -1
+                    }
+
+                    if (steps === 0)
+                        return
+
+                    var next = slider.value + steps * 0.02
+                    next = Math.max(0, Math.min(1, next))
+                    slider.value = next
+                    sessionObject.setVolume(next)
+                    root._wheelAdjusting = true
+                    wheelSyncHold.restart()
+                    ev.accepted = true
                 }
             }
 

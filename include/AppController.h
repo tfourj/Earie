@@ -18,6 +18,7 @@ class AppController final : public QObject
     Q_PROPERTY(bool allDevices READ allDevices WRITE setAllDevices NOTIFY allDevicesChanged)
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
     Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
+    Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -33,6 +34,9 @@ public:
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
 
+    bool scrollWheelVolumeOnHover() const { return m_scrollWheelVolumeOnHover; }
+    void setScrollWheelVolumeOnHover(bool v);
+
 public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
@@ -46,6 +50,7 @@ signals:
     void allDevicesChanged();
     void showSystemSessionsChanged();
     void showProcessStatusOnHoverChanged();
+    void scrollWheelVolumeOnHoverChanged();
 
 private slots:
     void rebuildHiddenMenus();
@@ -78,6 +83,7 @@ private:
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
     bool m_showProcessStatusOnHover = false;
+    bool m_scrollWheelVolumeOnHover = false;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;

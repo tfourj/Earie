@@ -39,6 +39,7 @@ void ConfigStore::load()
 
     m_showSystemSessions = o.value(QStringLiteral("showSystemSessions")).toBool(false);
     m_showProcessStatusOnHover = o.value(QStringLiteral("showProcessStatusOnHover")).toBool(false);
+    m_scrollWheelVolumeOnHover = o.value(QStringLiteral("scrollWheelVolumeOnHover")).toBool(false);
 
     m_hiddenDevices.clear();
     for (const auto &v : o.value(QStringLiteral("hiddenDevices")).toArray()) {
@@ -86,6 +87,7 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("mode"), m_mode == Mode::AllDevices ? QStringLiteral("all") : QStringLiteral("default"));
     o.insert(QStringLiteral("showSystemSessions"), m_showSystemSessions);
     o.insert(QStringLiteral("showProcessStatusOnHover"), m_showProcessStatusOnHover);
+    o.insert(QStringLiteral("scrollWheelVolumeOnHover"), m_scrollWheelVolumeOnHover);
 
     {
         QJsonArray arr;
@@ -143,6 +145,14 @@ void ConfigStore::setShowProcessStatusOnHover(bool v)
     if (m_showProcessStatusOnHover == v)
         return;
     m_showProcessStatusOnHover = v;
+    emit changed();
+}
+
+void ConfigStore::setScrollWheelVolumeOnHover(bool v)
+{
+    if (m_scrollWheelVolumeOnHover == v)
+        return;
+    m_scrollWheelVolumeOnHover = v;
     emit changed();
 }
 

@@ -28,6 +28,9 @@ public:
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
 
+    bool scrollWheelVolumeOnHover() const { return m_scrollWheelVolumeOnHover; }
+    void setScrollWheelVolumeOnHover(bool v);
+
     bool isDeviceHidden(const QString &deviceId) const;
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
@@ -50,6 +53,7 @@ private:
     Mode m_mode = Mode::DefaultDeviceOnly;
     bool m_showSystemSessions = false;
     bool m_showProcessStatusOnHover = false;
+    bool m_scrollWheelVolumeOnHover = false;
 
     QSet<QString> m_hiddenDevices;
     QSet<QString> m_hiddenProcessesGlobal; // exePath

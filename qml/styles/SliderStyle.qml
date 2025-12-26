@@ -15,6 +15,10 @@ Slider {
     to: 1
     stepSize: 0.001
 
+    // We implement wheel-to-adjust-volume ourselves (with settings + fixed 2% steps).
+    // Disable the built-in wheel behavior to avoid double-handling/jitter.
+    wheelEnabled: false
+
     height: 30
     leftPadding: 8
     rightPadding: 8

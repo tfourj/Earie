@@ -87,6 +87,10 @@ Item {
                         text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
                         onTriggered: if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
                     }
+                    StyledMenuItem {
+                        text: (appController && appController.scrollWheelVolumeOnHover ? "✓ " : "") + "Scroll wheel changes volume on hover (2%)"
+                        onTriggered: if (appController) appController.scrollWheelVolumeOnHover = !appController.scrollWheelVolumeOnHover
+                    }
                 }
             }
 
