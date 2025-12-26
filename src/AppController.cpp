@@ -20,7 +20,9 @@
 #include <QAbstractItemModel>
 #include <QWidgetAction>
 #include <QCheckBox>
+#include <QDir>
 #include <QFileInfo>
+#include <QSettings>
 #include <algorithm>
 
 #include <windows.h>
@@ -85,6 +87,8 @@ bool AppController::init()
     m_showSystemSessions = m_config->showSystemSessions();
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
+    m_startWithWindows = m_config->startWithWindows();
+    applyStartWithWindows(m_startWithWindows);
 
     m_audio = new AudioBackend(this);
     m_audio->setConfig(m_config);
@@ -145,6 +149,16 @@ void AppController::setScrollWheelVolumeOnHover(bool v)
     if (m_config)
         m_config->setScrollWheelVolumeOnHover(m_scrollWheelVolumeOnHover);
     emit scrollWheelVolumeOnHoverChanged();
+}
+
+void AppController::setStartWithWindows(bool v)
+{
+    if (m_startWithWindows == v)
+        return;
+    m_startWithWindows = v;
+    if (m_config)
+        m_config->setStartWithWindows(m_startWithWindows);
+    applyStartWithWindows(m_startWithWindows);
 }
 
 void AppController::toggleFlyout()
@@ -311,6 +325,19 @@ void AppController::adjustFlyoutHeightToContent()
     m_view->resize(m_view->width(), desired);
 }
 
+void AppController::applyStartWithWindows(bool v)
+{
+    QSettings runKey(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
+                     QSettings::NativeFormat);
+    const QString appName = QStringLiteral("Earie");
+    if (v) {
+        const QString exePath = QDir::toNativeSeparators(QGuiApplication::applicationFilePath());
+        runKey.setValue(appName, QStringLiteral("\"%1\"").arg(exePath));
+    } else {
+        runKey.remove(appName);
+    }
+}
+
 void AppController::applyWindowEffectsIfPossible()
 {
     if (!m_view)
@@ -351,6 +378,13 @@ void AppController::buildTray()
     connect(m_actionAllDevices, &QAction::triggered, this, [this, syncModeChecks]() {
         setAllDevices(true);
         syncModeChecks();
+    });
+
+    m_actionStartWithWindows = m_menu->addAction(tr("Start with Windows"));
+    m_actionStartWithWindows->setCheckable(true);
+    m_actionStartWithWindows->setChecked(m_startWithWindows);
+    connect(m_actionStartWithWindows, &QAction::triggered, this, [this](bool checked) {
+        setStartWithWindows(checked);
     });
 
     m_menu->addSeparator();

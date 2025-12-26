@@ -60,6 +60,8 @@ private:
     void buildFlyout();
     void positionFlyout();
     void adjustFlyoutHeightToContent();
+    void setStartWithWindows(bool v);
+    void applyStartWithWindows(bool v);
     void applyWindowEffectsIfPossible();
     void updateTrayIcon();
 
@@ -74,6 +76,7 @@ private:
     QAction *m_actionQuit = nullptr;
     QAction *m_actionDefaultOnly = nullptr;
     QAction *m_actionAllDevices = nullptr;
+    QAction *m_actionStartWithWindows = nullptr;
 
     QPointer<QQuickView> m_view;
 
@@ -84,6 +87,7 @@ private:
     bool m_showSystemSessions = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
+    bool m_startWithWindows = false;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;
