@@ -1047,11 +1047,11 @@ void AppController::positionHiddenItemsWindow(bool recomputeAnchor)
 
         QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
         int x = work.right() - w - margin;
-        int y = m_view && m_view->isVisible() ? m_view->y() : (QCursor::pos().y() - h / 2);
+        int y = work.bottom() - margin - h;
         x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
         y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
 
-        m_hiddenAnchorPos = QPoint(x, y);
+        m_hiddenAnchorPos = QPoint(x, y + h);
         m_hiddenAnchorWork = work;
         m_hiddenAnchorValid = true;
     }
@@ -1065,9 +1065,10 @@ void AppController::positionHiddenItemsWindow(bool recomputeAnchor)
     }
 
     int x = m_hiddenAnchorPos.x();
-    int y = m_hiddenAnchorPos.y();
+    int bottomY = m_hiddenAnchorPos.y();
     x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
-    y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
+    bottomY = qMax(work.top() + margin + h, qMin(bottomY, work.bottom() - margin));
+    int y = bottomY - h;
 
     m_hiddenView->setPosition(QPoint(x, y));
 }
