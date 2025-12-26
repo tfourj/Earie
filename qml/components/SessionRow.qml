@@ -14,21 +14,24 @@ Item {
     height: 34
     opacity: sessionObject && sessionObject.active === false ? 0.82 : 1.0
 
-    Rectangle {
-        anchors.fill: parent
-        radius: 10
-            color: mouse.containsMouse ? theme.cellHover : "transparent"
+    // Unified hover state for the entire row (works even when hovering child controls like the slider/icon).
+    HoverHandler {
+        id: hover
     }
 
-    MouseArea {
-        id: mouse
+    Rectangle {
         anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
+        // Slight inset so the hover highlight doesn't butt up against the cell edges.
+        anchors.margins: 1
+        radius: 10
+        color: hover.hovered ? theme.cellHover : "transparent"
     }
 
     RowLayout {
         anchors.fill: parent
+        // Inner padding so content (esp. the % text) isn't flush with the right edge.
+        anchors.leftMargin: 6
+        anchors.rightMargin: 10
         spacing: 10
 
         Item {
@@ -161,7 +164,7 @@ Item {
         }
     }
 
-    ToolTip.visible: appController && appController.showProcessStatusOnHover && mouse.containsMouse && sessionObject
+    ToolTip.visible: appController && appController.showProcessStatusOnHover && hover.hovered && sessionObject
     ToolTip.delay: 450
     ToolTip.text: sessionObject
                   ? (sessionObject.displayName
