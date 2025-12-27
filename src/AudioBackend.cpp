@@ -252,6 +252,8 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
                 dev->sessionsModelTyped()->removeSessionAt(row);
                 anyProcessesChanged = true;
             }
+            map.remove(k);
+            delete sess;
         }
     }
 
@@ -298,6 +300,8 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         const int row = m_deviceModel->indexOfDeviceId(id);
         if (row >= 0)
             m_deviceModel->removeDeviceAt(row);
+        m_deviceById.remove(id);
+        delete dev;
         anyDevicesChanged = true;
     }
 
