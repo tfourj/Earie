@@ -70,6 +70,7 @@ private:
     void emitPeaksNow();
 
     bool m_showSystemSessions = false;
+    std::atomic<bool> m_destroying{false};
     QTimer m_snapshotTimer;
     QTimer m_meterTimer;
 

@@ -4,10 +4,12 @@
 #include "win/Hr.h"
 
 #include <QDateTime>
+#include <QDebug>
 #include <QFileInfo>
 #include <QHash>
 #include <QMutex>
 
+#include <atomic>
 #include <unordered_map>
 
 #include <windows.h>
@@ -182,8 +184,8 @@ struct AudioWorker::Impl
     private:
         void ping()
         {
-            if (m_worker)
-                QMetaObject::invokeMethod(m_worker, [this]() { m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            if (m_worker && !m_worker->m_destroying.load())
+                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
         }
 
         std::atomic<ULONG> m_ref{1};
@@ -221,8 +223,8 @@ struct AudioWorker::Impl
 
         HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA) override
         {
-            if (m_worker)
-                QMetaObject::invokeMethod(m_worker, [this]() { m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            if (m_worker && !m_worker->m_destroying.load())
+                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
             return S_OK;
         }
 
@@ -272,8 +274,8 @@ struct AudioWorker::Impl
     private:
         void ping()
         {
-            if (m_worker)
-                QMetaObject::invokeMethod(m_worker, [this]() { m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            if (m_worker && !m_worker->m_destroying.load())
+                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
         }
 
         std::atomic<ULONG> m_ref{1};
@@ -312,8 +314,8 @@ struct AudioWorker::Impl
 
         HRESULT STDMETHODCALLTYPE OnSessionCreated(IAudioSessionControl *) override
         {
-            if (m_worker)
-                QMetaObject::invokeMethod(m_worker, [this]() { m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            if (m_worker && !m_worker->m_destroying.load())
+                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
             return S_OK;
         }
 
@@ -413,6 +415,7 @@ AudioWorker::AudioWorker(QObject *parent)
 
 AudioWorker::~AudioWorker()
 {
+    m_destroying.store(true);
     stop();
     delete m;
     m = nullptr;
@@ -446,13 +449,15 @@ void AudioWorker::stop()
 
 void AudioWorker::setShowSystemSessions(bool show)
 {
+    if (m_destroying.load())
+        return;
     m_showSystemSessions = show;
     scheduleSnapshot();
 }
 
 void AudioWorker::setDeviceVolume(const QString &deviceId, double volume01)
 {
-    if (!m)
+    if (m_destroying.load() || !m)
         return;
     auto it = m->devices.find(deviceId);
     if (it == m->devices.end() || !it->second.endpoint)
@@ -462,7 +467,7 @@ void AudioWorker::setDeviceVolume(const QString &deviceId, double volume01)
 
 void AudioWorker::setDeviceMuted(const QString &deviceId, bool muted)
 {
-    if (!m)
+    if (m_destroying.load() || !m)
         return;
     auto it = m->devices.find(deviceId);
     if (it == m->devices.end() || !it->second.endpoint)
@@ -472,7 +477,7 @@ void AudioWorker::setDeviceMuted(const QString &deviceId, bool muted)
 
 void AudioWorker::setSessionVolume(const QString &deviceId, quint32 pid, const QString &exePath, double volume01)
 {
-    if (!m)
+    if (m_destroying.load() || !m)
         return;
     Impl::SessionKey key{deviceId, pid, exePath};
     auto it = m->sessions.find(key);
@@ -483,7 +488,7 @@ void AudioWorker::setSessionVolume(const QString &deviceId, quint32 pid, const Q
 
 void AudioWorker::setSessionMuted(const QString &deviceId, quint32 pid, const QString &exePath, bool muted)
 {
-    if (!m)
+    if (m_destroying.load() || !m)
         return;
     Impl::SessionKey key{deviceId, pid, exePath};
     auto it = m->sessions.find(key);
@@ -494,13 +499,20 @@ void AudioWorker::setSessionMuted(const QString &deviceId, quint32 pid, const QS
 
 void AudioWorker::scheduleSnapshot()
 {
-    if (!m_snapshotTimer.isActive())
+    // Check if object is being destroyed or already destroyed
+    if (m_destroying.load() || !m) {
+        qWarning("AudioWorker::scheduleSnapshot() called after destruction - this indicates a race condition with COM callbacks");
+        return;
+    }
+    // Additional safety: check if timer is still valid (parent object might be destroyed)
+    if (!m_snapshotTimer.isActive() && m_snapshotTimer.parent() == this)
         m_snapshotTimer.start();
 }
 
 void AudioWorker::emitSnapshotNow()
 {
-    if (!m || !m->enumerator)
+    // Check if object is being destroyed or already destroyed
+    if (m_destroying.load() || !m || !m->enumerator)
         return;
 
     // Refresh device list.
@@ -529,6 +541,10 @@ void AudioWorker::emitSnapshotNow()
 
     // Rebuild COM caches each snapshot, but unregister previous callbacks to avoid dangling notifications.
     {
+        // Check again before unregistering - destruction might have started
+        if (m_destroying.load() || !m)
+            return;
+            
         for (auto &kv : m->devices) {
             auto &dc = kv.second;
             if (dc.endpoint && m->endpointCb) {
@@ -555,6 +571,10 @@ void AudioWorker::emitSnapshotNow()
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
 
     for (UINT i = 0; i < count; ++i) {
+        // Check periodically during long-running operation
+        if (m_destroying.load() || !m)
+            return;
+            
         ComPtr<IMMDevice> dev;
         if (FAILED(coll->Item(i, dev.put())) || !dev)
             continue;
@@ -582,7 +602,10 @@ void AudioWorker::emitSnapshotNow()
                 ep->GetMute(&mute);
                 ds.volume = vol;
                 ds.muted = (mute == TRUE);
-                ep->RegisterControlChangeNotify(m->endpointCb.get());
+                // Only register callback if not destroying
+                if (!m_destroying.load() && m && m->endpointCb) {
+                    ep->RegisterControlChangeNotify(m->endpointCb.get());
+                }
                 dc.endpoint.attach(ep.detach());
             }
         }
@@ -592,7 +615,10 @@ void AudioWorker::emitSnapshotNow()
             ComPtr<IAudioSessionManager2> mgr;
             hr = dc.device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(mgr.put()));
             if (SUCCEEDED(hr) && mgr) {
-                mgr->RegisterSessionNotification(m->sessionCb.get());
+                // Only register callback if not destroying
+                if (!m_destroying.load() && m && m->sessionCb) {
+                    mgr->RegisterSessionNotification(m->sessionCb.get());
+                }
                 dc.sessionMgr.attach(mgr.detach());
 
                 ComPtr<IAudioSessionEnumerator> se;
@@ -676,34 +702,45 @@ void AudioWorker::emitSnapshotNow()
 
                         sc.lastActiveMs = lastActive;
                         sc.state = st;
-                        auto *events = new Impl::SessionEvents(this, key);
-                        if (sc.ctrl) {
-                            // RegisterAudioSessionNotification does NOT guarantee AddRef on events across all implementations,
-                            // so we keep an explicit ref we own.
-                            events->AddRef();
-                            sc.ctrl->RegisterAudioSessionNotification(events);
-                            sc.events = events;
+                        // Only register session events if not destroying
+                        if (!m_destroying.load() && m) {
+                            auto *events = new Impl::SessionEvents(this, key);
+                            if (sc.ctrl) {
+                                // RegisterAudioSessionNotification does NOT guarantee AddRef on events across all implementations,
+                                // so we keep an explicit ref we own.
+                                events->AddRef();
+                                sc.ctrl->RegisterAudioSessionNotification(events);
+                                sc.events = events;
+                            }
+                            events->Release(); // balance initial ref
                         }
-                        events->Release(); // balance initial ref
 
-                        m->sessions.insert({key, std::move(sc)});
-
-                        ds.sessions.push_back(ss);
+                        // Only store session if not destroying
+                        if (!m_destroying.load() && m) {
+                            m->sessions.insert({key, std::move(sc)});
+                            ds.sessions.push_back(ss);
+                        }
                     }
                 }
             }
         }
 
-        m->devices.emplace(id, std::move(dc));
-        devices.push_back(ds);
+        // Final check before storing - don't add to cache if destroying
+        if (!m_destroying.load() && m) {
+            m->devices.emplace(id, std::move(dc));
+            devices.push_back(ds);
+        }
     }
 
-    emit snapshotReady(devices);
+    // Only emit if not destroying
+    if (!m_destroying.load() && m)
+        emit snapshotReady(devices);
 }
 
 void AudioWorker::emitPeaksNow()
 {
-    if (!m)
+    // Check if object is being destroyed or already destroyed
+    if (m_destroying.load() || !m)
         return;
 
     QVector<SessionPeak> peaks;
