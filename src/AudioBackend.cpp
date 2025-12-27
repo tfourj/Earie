@@ -405,14 +405,11 @@ QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshotAll() const
 QVector<AudioBackend::ProcessSnapshot> AudioBackend::knownProcessesSnapshot() const
 {
     QHash<QString, QString> uniq;
-    for (auto it = m_sessionByKeyByDevice.begin(); it != m_sessionByKeyByDevice.end(); ++it) {
-        for (auto *s : it.value()) {
-            if (!s)
+    for (const auto &ds : m_lastSnapshot) {
+        for (const auto &ss : ds.sessions) {
+            if (ss.exePath.isEmpty())
                 continue;
-            const QString exe = s->exePath();
-            if (exe.isEmpty())
-                continue;
-            uniq.insert(exe, s->displayName());
+            uniq.insert(ss.exePath, ss.displayName);
         }
     }
     QVector<ProcessSnapshot> out;
