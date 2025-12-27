@@ -60,6 +60,13 @@ Item {
             id: topRow
             Layout.fillWidth: true
 
+            Image {
+                Layout.preferredWidth: 16
+                Layout.preferredHeight: 16
+                source: "qrc:/assets/earie_white.svg"
+                smooth: true
+            }
+
             Text {
                 Layout.fillWidth: true
                 color: theme.text
