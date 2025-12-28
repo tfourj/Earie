@@ -29,12 +29,25 @@ AudioBackend::AudioBackend(QObject *parent)
 
 AudioBackend::~AudioBackend()
 {
+    qInfo() << "AudioBackend: Starting destruction";
     if (m_worker) {
+        qInfo() << "AudioBackend: Disconnecting worker thread finished signal";
+        disconnect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
+        qInfo() << "AudioBackend: Stopping worker";
         QMetaObject::invokeMethod(m_worker, &AudioWorker::stop, Qt::BlockingQueuedConnection);
+        qInfo() << "AudioBackend: Quitting worker thread";
+        m_workerThread.quit();
+        qInfo() << "AudioBackend: Waiting for worker thread to finish";
+        m_workerThread.wait();
+        qInfo() << "AudioBackend: Deleting worker";
+        delete m_worker;
         m_worker = nullptr;
+    } else {
+        qInfo() << "AudioBackend: No worker to clean up, quitting thread";
+        m_workerThread.quit();
+        m_workerThread.wait();
     }
-    m_workerThread.quit();
-    m_workerThread.wait();
+    qInfo() << "AudioBackend: Destruction complete";
 }
 
 void AudioBackend::setConfig(ConfigStore *cfg)
@@ -511,12 +524,18 @@ void AudioBackend::setSessionMuted(const QString &deviceId, quint32 pid, const Q
 
 void AudioBackend::rebuildMenusIfChanged(bool devicesChangedNow, bool processesChangedNow, bool defaultDeviceChangedNow)
 {
-    if (devicesChangedNow)
+    if (devicesChangedNow) {
+        qInfo() << "Emitting devicesChanged";
         emit devicesChanged();
-    if (processesChangedNow)
+    }
+    if (processesChangedNow) {
+        qInfo() << "Emitting knownProcessesChanged";
         emit knownProcessesChanged();
-    if (defaultDeviceChangedNow)
+    }
+    if (defaultDeviceChangedNow) {
+        qInfo() << "Emitting defaultDeviceChanged";
         emit defaultDeviceChanged();
+    }
 }
 
 
