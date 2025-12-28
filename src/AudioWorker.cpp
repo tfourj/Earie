@@ -732,6 +732,22 @@ void AudioWorker::emitSnapshotNow()
         }
     }
 
+    if (m->lastActiveByKeyStr.size() > 5000) {
+        qint64 cutoff = nowMs - 3600000LL; // 1 hour ago
+        int cleaned = 0;
+        for (auto it = m->lastActiveByKeyStr.begin(); it != m->lastActiveByKeyStr.end(); ) {
+            if (*it < cutoff) {
+                it = m->lastActiveByKeyStr.erase(it);
+                cleaned++;
+            } else {
+                ++it;
+            }
+        }
+        if (cleaned > 0) {
+            qDebug() << "AudioWorker: cleaned" << cleaned << "old lastActive entries, size now" << m->lastActiveByKeyStr.size();
+        }
+    }
+
     // Only emit if not destroying
     if (!m_destroying.load() && m)
         emit snapshotReady(devices);

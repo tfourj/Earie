@@ -73,7 +73,21 @@ QString IconCache::ensureIconForExePath(const QString &exePath)
     }
 
     lock.relock();
+    if (!m_cache.contains(exePath)) {
+        m_order.append(exePath);
+    }
     m_cache.insert(exePath, img);
+    if (m_order.size() > 2000) {
+        int evicted = 0;
+        while (m_order.size() > 1500) {
+            QString old = m_order.takeFirst();
+            m_cache.remove(old);
+            evicted++;
+        }
+        if (evicted > 0) {
+            qDebug() << "IconCache: evicted" << evicted << "entries, cache size" << m_cache.size() << "order size" << m_order.size();
+        }
+    }
     return exePath;
 }
 
@@ -92,7 +106,21 @@ QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requ
         img = loadSmallIconForExePath(key);
         if (!img.isNull()) {
             QMutexLocker lock(&m_mutex);
+            if (!m_cache.contains(key)) {
+                m_order.append(key);
+            }
             m_cache.insert(key, img);
+            if (m_order.size() > 2000) {
+                int evicted = 0;
+                while (m_order.size() > 1500) {
+                    QString old = m_order.takeFirst();
+                    m_cache.remove(old);
+                    evicted++;
+                }
+                if (evicted > 0) {
+                    qDebug() << "IconCache: evicted" << evicted << "entries, cache size" << m_cache.size() << "order size" << m_order.size();
+                }
+            }
         }
     }
 

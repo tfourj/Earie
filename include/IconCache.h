@@ -2,6 +2,7 @@
 
 #include <QHash>
 #include <QImage>
+#include <QList>
 #include <QMutex>
 #include <QQuickImageProvider>
 
@@ -20,6 +21,7 @@ private:
 
     mutable QMutex m_mutex;
     QHash<QString, QImage> m_cache; // exePath -> image
+    QList<QString> m_order;
 };
 
 
