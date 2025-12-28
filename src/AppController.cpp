@@ -116,7 +116,20 @@ bool AppController::init()
     m_audio->setShowSystemSessions(m_showSystemSessions);
     m_audio->start();
 
+    // Preload icons for known processes to avoid choppiness on first open.
+    if (auto *cache = m_audio->iconCache()) {
+        const auto known = m_audio->knownProcessesSnapshot();
+        qInfo() << "Preloading" << known.size() << "process icons...";
+        for (const auto &p : known) {
+            if (!p.exePath.isEmpty()) {
+                cache->ensureIconForExePath(p.exePath);
+            }
+        }
+        qInfo() << "Finished preloading process icons.";
+    }
+
     buildFlyout();
+    buildHiddenItemsWindow();
     buildTray();
     rebuildHiddenMenus();
     updateTrayIcon();
@@ -648,6 +661,11 @@ void AppController::buildFlyout()
 
     applyWindowEffectsIfPossible(m_view);
 
+    // Preload QML to reduce initial opening lag.
+    m_view->create();
+    (void)m_view->rootObject();
+    qInfo() << "Preloaded main QML view.";
+
     // Auto-resize while visible when switching modes / devices list changes.
     if (m_audio && m_audio->deviceModel()) {
         auto *model = static_cast<QAbstractItemModel *>(m_audio->deviceModel());
@@ -694,6 +712,11 @@ void AppController::buildHiddenItemsWindow()
     m_hiddenView->setMaximumWidth(420);
 
     applyWindowEffectsIfPossible(m_hiddenView);
+
+    // Preload QML to reduce initial opening lag.
+    m_hiddenView->create();
+    (void)m_hiddenView->rootObject();
+    qInfo() << "Preloaded hidden items QML view.";
 }
 
 void AppController::adjustFlyoutHeightToContent()

@@ -66,6 +66,7 @@ QString IconCache::ensureIconForExePath(const QString &exePath)
         return exePath;
 
     lock.unlock();
+    qInfo() << "Loading icon for" << exePath;
     QImage img = loadSmallIconForExePath(exePath);
     if (img.isNull()) {
         img = QImage(24, 24, QImage::Format_ARGB32_Premultiplied);
@@ -103,6 +104,7 @@ QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requ
     }
 
     if (img.isNull() && !key.isEmpty()) {
+        qInfo() << "Loading icon on demand for" << key;
         img = loadSmallIconForExePath(key);
         if (!img.isNull()) {
             QMutexLocker lock(&m_mutex);
