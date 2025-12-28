@@ -83,20 +83,35 @@ if (WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
     get_target_property(_qt_qmake_executable Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(_qt_bin_dir "${_qt_qmake_executable}" DIRECTORY)
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+
     if (WINDEPLOYQT_EXECUTABLE)
         set(_deploy_dir "${CMAKE_SOURCE_DIR}/release")
+
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E remove_directory "${_deploy_dir}"
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${_deploy_dir}"
-            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${TARGET_NAME}>" "${_deploy_dir}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
-            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+            COMMAND "${CMAKE_COMMAND}" -E copy
+                "$<TARGET_FILE:${TARGET_NAME}>"
                 "${_deploy_dir}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
+
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                --release
                 --qmldir "${CMAKE_SOURCE_DIR}/qml"
-                --no-compiler-runtime
                 --no-translations
                 --no-system-d3d-compiler
                 --no-opengl-sw
-            COMMAND cmd /c if exist "${CMAKE_SOURCE_DIR}/installer/clean_release.bat" call "${CMAKE_SOURCE_DIR}/installer/clean_release.bat" "${_deploy_dir}"
-            COMMAND cmd /c if exist "${CMAKE_SOURCE_DIR}/installer/user_post_deploy.bat" call "${CMAKE_SOURCE_DIR}/installer/user_post_deploy.bat" "${_deploy_dir}" "${PROJECT_VERSION}"
+                --skip-plugin-types qmltooling,generic
+                "${_deploy_dir}/$<TARGET_FILE_NAME:${TARGET_NAME}>"
+
+            COMMAND cmd /c if exist
+                "${CMAKE_SOURCE_DIR}/installer/clean_release.bat"
+                call "${CMAKE_SOURCE_DIR}/installer/clean_release.bat" "${_deploy_dir}"
+
+            COMMAND cmd /c if exist
+                "${CMAKE_SOURCE_DIR}/installer/user_post_deploy.bat"
+                call "${CMAKE_SOURCE_DIR}/installer/user_post_deploy.bat"
+                     "${_deploy_dir}" "${PROJECT_VERSION}"
+
             COMMENT "Running windeployqt for ${TARGET_NAME} (release folder)"
         )
     else()
