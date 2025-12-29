@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QMutex>
+#include <QPointer>
 
 #include <atomic>
 #include <unordered_map>
@@ -184,12 +185,18 @@ struct AudioWorker::Impl
     private:
         void ping()
         {
-            if (m_worker && !m_worker->m_destroying.load())
-                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            QPointer<AudioWorker> worker = m_worker;
+            if (!worker || worker->m_destroying.load())
+                return;
+            QMetaObject::invokeMethod(worker.data(), [worker]() {
+                if (!worker || worker->m_destroying.load())
+                    return;
+                worker->scheduleSnapshot();
+            }, Qt::QueuedConnection);
         }
 
         std::atomic<ULONG> m_ref{1};
-        AudioWorker *m_worker = nullptr;
+        QPointer<AudioWorker> m_worker;
     };
 
     class EndpointCallback final : public IAudioEndpointVolumeCallback
@@ -223,14 +230,20 @@ struct AudioWorker::Impl
 
         HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA) override
         {
-            if (m_worker && !m_worker->m_destroying.load())
-                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            QPointer<AudioWorker> worker = m_worker;
+            if (!worker || worker->m_destroying.load())
+                return S_OK;
+            QMetaObject::invokeMethod(worker.data(), [worker]() {
+                if (!worker || worker->m_destroying.load())
+                    return;
+                worker->scheduleSnapshot();
+            }, Qt::QueuedConnection);
             return S_OK;
         }
 
     private:
         std::atomic<ULONG> m_ref{1};
-        AudioWorker *m_worker = nullptr;
+        QPointer<AudioWorker> m_worker;
     };
 
     class SessionEvents final : public IAudioSessionEvents
@@ -274,12 +287,18 @@ struct AudioWorker::Impl
     private:
         void ping()
         {
-            if (m_worker && !m_worker->m_destroying.load())
-                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            QPointer<AudioWorker> worker = m_worker;
+            if (!worker || worker->m_destroying.load())
+                return;
+            QMetaObject::invokeMethod(worker.data(), [worker]() {
+                if (!worker || worker->m_destroying.load())
+                    return;
+                worker->scheduleSnapshot();
+            }, Qt::QueuedConnection);
         }
 
         std::atomic<ULONG> m_ref{1};
-        AudioWorker *m_worker = nullptr;
+        QPointer<AudioWorker> m_worker;
         SessionKey m_key;
     };
 
@@ -314,14 +333,20 @@ struct AudioWorker::Impl
 
         HRESULT STDMETHODCALLTYPE OnSessionCreated(IAudioSessionControl *) override
         {
-            if (m_worker && !m_worker->m_destroying.load())
-                QMetaObject::invokeMethod(m_worker, [this]() { if (m_worker && !m_worker->m_destroying.load()) m_worker->scheduleSnapshot(); }, Qt::QueuedConnection);
+            QPointer<AudioWorker> worker = m_worker;
+            if (!worker || worker->m_destroying.load())
+                return S_OK;
+            QMetaObject::invokeMethod(worker.data(), [worker]() {
+                if (!worker || worker->m_destroying.load())
+                    return;
+                worker->scheduleSnapshot();
+            }, Qt::QueuedConnection);
             return S_OK;
         }
 
     private:
         std::atomic<ULONG> m_ref{1};
-        AudioWorker *m_worker = nullptr;
+        QPointer<AudioWorker> m_worker;
     };
 
     ComPtr<IMMNotificationClient> notifyClient;
