@@ -21,6 +21,11 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("Earie"));
     
     if (QFile::exists(QStringLiteral("log.enable"))) {
+        if (QFile::exists(QStringLiteral("earie.log"))) {
+            if (QFile::exists(QStringLiteral("earie.old.log")))
+                QFile::remove(QStringLiteral("earie.old.log"));
+            QFile::rename(QStringLiteral("earie.log"), QStringLiteral("earie.old.log"));
+        }
         {
             QFile logFile(QStringLiteral("earie.log"));
             if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
