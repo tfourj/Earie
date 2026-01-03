@@ -32,6 +32,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPixmap>
+#include <QImage>
 #include <QVariant>
 #include <QHash>
 #include <QSet>
@@ -41,6 +42,7 @@
 #include <windows.h>
 
 static QIcon makeEarieTrayIcon(double volume01, bool muted);
+static QIcon forceWhiteTrayIcon(const QIcon &icon);
 static QString trayMenuStyleSheet();
 static void openWindowsVolumeMixer();
 static void openWindowsPlaybackDevices();
@@ -922,7 +924,43 @@ static QIcon makeEarieTrayIcon(double volume01, bool muted)
         // Safety fallback (should not happen if resources are embedded)
         icon = QIcon::fromTheme(QStringLiteral("audio-volume-high"));
     }
-    return icon;
+    return forceWhiteTrayIcon(icon);
+}
+
+static QIcon forceWhiteTrayIcon(const QIcon &icon)
+{
+    if (icon.isNull())
+        return icon;
+
+    static QHash<quint64, QIcon> s_whiteTrayCache;
+    const quint64 key = icon.cacheKey();
+    if (key != 0 && s_whiteTrayCache.contains(key))
+        return s_whiteTrayCache.value(key);
+
+    QIcon white;
+    const QList<QSize> sizes = icon.availableSizes(QIcon::Normal, QIcon::Off);
+    const QList<QSize> targetSizes = sizes.isEmpty() ? QList<QSize> { QSize(16, 16) } : sizes;
+
+    for (const QSize &size : targetSizes) {
+        QPixmap pixmap = icon.pixmap(size, QIcon::Normal, QIcon::Off);
+        if (pixmap.isNull())
+            continue;
+        QImage img = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < img.height(); ++y) {
+            QRgb *row = reinterpret_cast<QRgb *>(img.scanLine(y));
+            for (int x = 0; x < img.width(); ++x) {
+                const int a = qAlpha(row[x]);
+                if (a == 0)
+                    continue;
+                row[x] = qRgba(255, 255, 255, a);
+            }
+        }
+        white.addPixmap(QPixmap::fromImage(img));
+    }
+
+    if (!white.isNull() && key != 0)
+        s_whiteTrayCache.insert(key, white);
+    return white.isNull() ? icon : white;
 }
 
 static QString trayMenuStyleSheet()
