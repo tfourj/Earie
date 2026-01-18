@@ -83,3 +83,4 @@ CMakeLists.txt.user*
 /release
 *.zip
 /installer
+AGENTS.md
