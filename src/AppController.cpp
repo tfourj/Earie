@@ -1002,14 +1002,14 @@ static QIcon makeEarieTrayIcon(double volume01, bool muted, int trayIconMode, bo
 
     const QString path = useNative
         ? (bars < 0
-            ? QStringLiteral(":/assets/vol_m.ico")
-            : QStringLiteral(":/assets/vol_%1.ico").arg(bars))
+            ? QStringLiteral(":/assets/tray/vol_m.ico")
+            : QStringLiteral(":/assets/tray/vol_%1.ico").arg(bars))
         : [&]() {
             const int mode = qBound(0, trayIconMode, 1);
             const QString modeSuffix = (mode == 1) ? QStringLiteral("black") : QStringLiteral("white");
             return (bars < 0)
-                ? QStringLiteral(":/assets/vol_m_%1.svg").arg(modeSuffix)
-                : QStringLiteral(":/assets/vol_%1_%2.svg").arg(bars).arg(modeSuffix);
+                ? QStringLiteral(":/assets/tray/vol_m_%1.svg").arg(modeSuffix)
+                : QStringLiteral(":/assets/tray/vol_%1_%2.svg").arg(bars).arg(modeSuffix);
         }();
 
     QIcon icon(path);
