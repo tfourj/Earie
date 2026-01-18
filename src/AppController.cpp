@@ -1065,9 +1065,11 @@ static QString trayMenuStyleSheet()
 static void openWindowsVolumeMixer()
 {
 #if defined(Q_OS_WIN)
-    // Classic Windows volume mixer.
-    // (On Win11 this still works, though Microsoft is moving some UX into Settings.)
-    QProcess::startDetached(QStringLiteral("sndvol.exe"), {});
+    // Modern Windows Settings page for per-app volume.
+    if (!QDesktopServices::openUrl(QUrl(QStringLiteral("ms-settings:apps-volume")))) {
+        // Fallback to classic Windows volume mixer.
+        QProcess::startDetached(QStringLiteral("sndvol.exe"), {});
+    }
 #endif
 }
 
