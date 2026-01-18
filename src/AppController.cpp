@@ -9,8 +9,10 @@
 
 #include <QAction>
 #include <QEvent>
+#include <QDateTime>
 #include <QGuiApplication>
 #include <QDesktopServices>
+#include <QFile>
 #include <QMenu>
 #include <QProcess>
 #include <QQuickItem>
@@ -26,6 +28,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QSettings>
+#include <QTextStream>
 #include <QUrl>
 #include <QDialog>
 #include <QLabel>
@@ -47,6 +50,43 @@ static QString trayMenuStyleSheet();
 static void openWindowsVolumeMixer();
 static void openWindowsPlaybackDevices();
 static void openWindowsSoundSettings();
+static void setFileLoggingEnabled(bool enabled);
+
+static bool s_fileLoggingEnabled = false;
+
+static void fileLogMessageHandler(QtMsgType, const QMessageLogContext &, const QString &msg)
+{
+    QFile logFile(QStringLiteral("earie.log"));
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << " " << msg << "\n";
+        logFile.close();
+    }
+}
+
+static void setFileLoggingEnabled(bool enabled)
+{
+    if (enabled == s_fileLoggingEnabled)
+        return;
+    s_fileLoggingEnabled = enabled;
+
+    if (enabled) {
+        if (QFile::exists(QStringLiteral("earie.log"))) {
+            if (QFile::exists(QStringLiteral("earie.old.log")))
+                QFile::remove(QStringLiteral("earie.old.log"));
+            QFile::rename(QStringLiteral("earie.log"), QStringLiteral("earie.old.log"));
+        }
+        QFile logFile(QStringLiteral("earie.log"));
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&logFile);
+            out << "logging started at " << QDateTime::currentDateTime().toString() << "\n";
+            logFile.close();
+        }
+        qInstallMessageHandler(fileLogMessageHandler);
+    } else {
+        qInstallMessageHandler(nullptr);
+    }
+}
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -111,6 +151,7 @@ bool AppController::init()
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
     m_debugMode = m_config->debugMode();
+    setFileLoggingEnabled(m_debugMode);
     applyStartWithWindows(m_startWithWindows);
 
     m_audio = new AudioBackend(this);
@@ -463,6 +504,7 @@ void AppController::setDebugMode(bool v)
     m_debugMode = v;
     if (m_config)
         m_config->setDebugMode(m_debugMode);
+    setFileLoggingEnabled(m_debugMode);
     emit debugModeChanged();
 }
 
