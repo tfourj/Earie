@@ -44,8 +44,7 @@
 
 #include <windows.h>
 
-static QIcon makeEarieTrayIcon(double volume01, bool muted);
-static QIcon forceWhiteTrayIcon(const QIcon &icon);
+static QIcon makeEarieTrayIcon(double volume01, bool muted, int trayIconMode, bool useNative);
 static QString trayMenuStyleSheet();
 static void openWindowsVolumeMixer();
 static void openWindowsPlaybackDevices();
@@ -101,12 +100,17 @@ AppController::AppController(QObject *parent)
         const bool muted = m_pendingTrayMuted;
         m_pendingTrayVolPct = -1;
 
-        if (pct == m_lastTrayVolPct && muted == m_lastTrayMuted)
+        const int mode = m_trayIconMode;
+        const bool native = m_useNativeTrayIcon;
+        if (pct == m_lastTrayVolPct && muted == m_lastTrayMuted
+            && mode == m_lastTrayIconMode && native == m_lastTrayNative)
             return;
         m_lastTrayVolPct = pct;
         m_lastTrayMuted = muted;
+        m_lastTrayIconMode = mode;
+        m_lastTrayNative = native;
 
-        m_tray.setIcon(makeEarieTrayIcon(pct / 100.0, muted));
+        m_tray.setIcon(makeEarieTrayIcon(pct / 100.0, muted, mode, native));
     });
 
     m_trayToggleSuppressTimer.setSingleShot(true);
@@ -151,6 +155,8 @@ bool AppController::init()
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
     m_debugMode = m_config->debugMode();
+    m_useNativeTrayIcon = m_config->useNativeTrayIcon();
+    m_trayIconMode = static_cast<int>(m_config->trayIconMode());
     setFileLoggingEnabled(m_debugMode);
     applyStartWithWindows(m_startWithWindows);
 
@@ -506,6 +512,29 @@ void AppController::setDebugMode(bool v)
         m_config->setDebugMode(m_debugMode);
     setFileLoggingEnabled(m_debugMode);
     emit debugModeChanged();
+}
+
+void AppController::setUseNativeTrayIcon(bool v)
+{
+    if (m_useNativeTrayIcon == v)
+        return;
+    m_useNativeTrayIcon = v;
+    if (m_config)
+        m_config->setUseNativeTrayIcon(m_useNativeTrayIcon);
+    updateTrayIcon();
+    emit useNativeTrayIconChanged();
+}
+
+void AppController::setTrayIconMode(int v)
+{
+    const int mode = qBound(0, v, 1);
+    if (m_trayIconMode == mode)
+        return;
+    m_trayIconMode = mode;
+    if (m_config)
+        m_config->setTrayIconMode(static_cast<ConfigStore::TrayIconMode>(m_trayIconMode));
+    updateTrayIcon();
+    emit trayIconModeChanged();
 }
 
 void AppController::openConfigFolder()
@@ -948,7 +977,7 @@ void AppController::buildTray()
     m_tray.setToolTip(QStringLiteral("Earie"));
     m_tray.setContextMenu(m_menu);
     // Set a default icon before showing to avoid "No Icon set" warnings.
-    m_tray.setIcon(makeEarieTrayIcon(1.0, false));
+    m_tray.setIcon(makeEarieTrayIcon(1.0, false, m_trayIconMode, m_useNativeTrayIcon));
     m_tray.show();
 
     connect(&m_tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
@@ -964,59 +993,31 @@ void AppController::buildTray()
     });
 }
 
-static QIcon makeEarieTrayIcon(double volume01, bool muted)
+static QIcon makeEarieTrayIcon(double volume01, bool muted, int trayIconMode, bool useNative)
 {
     const double v = qBound(0.0, volume01, 1.0);
     const int bars = muted
         ? -1
         : (v < 0.05 ? 0 : (v < 0.33 ? 1 : (v < 0.66 ? 2 : 3)));
 
-    const QString path = (bars < 0)
-        ? QStringLiteral(":/assets/vol_m.ico")
-        : QStringLiteral(":/assets/vol_%1.ico").arg(bars);
+    const QString path = useNative
+        ? (bars < 0
+            ? QStringLiteral(":/assets/vol_m.ico")
+            : QStringLiteral(":/assets/vol_%1.ico").arg(bars))
+        : [&]() {
+            const int mode = qBound(0, trayIconMode, 1);
+            const QString modeSuffix = (mode == 1) ? QStringLiteral("black") : QStringLiteral("white");
+            return (bars < 0)
+                ? QStringLiteral(":/assets/vol_m_%1.svg").arg(modeSuffix)
+                : QStringLiteral(":/assets/vol_%1_%2.svg").arg(bars).arg(modeSuffix);
+        }();
 
     QIcon icon(path);
     if (icon.isNull()) {
         // Safety fallback (should not happen if resources are embedded)
         icon = QIcon::fromTheme(QStringLiteral("audio-volume-high"));
     }
-    return forceWhiteTrayIcon(icon);
-}
-
-static QIcon forceWhiteTrayIcon(const QIcon &icon)
-{
-    if (icon.isNull())
-        return icon;
-
-    static QHash<quint64, QIcon> s_whiteTrayCache;
-    const quint64 key = icon.cacheKey();
-    if (key != 0 && s_whiteTrayCache.contains(key))
-        return s_whiteTrayCache.value(key);
-
-    QIcon white;
-    const QList<QSize> sizes = icon.availableSizes(QIcon::Normal, QIcon::Off);
-    const QList<QSize> targetSizes = sizes.isEmpty() ? QList<QSize> { QSize(16, 16) } : sizes;
-
-    for (const QSize &size : targetSizes) {
-        QPixmap pixmap = icon.pixmap(size, QIcon::Normal, QIcon::Off);
-        if (pixmap.isNull())
-            continue;
-        QImage img = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
-        for (int y = 0; y < img.height(); ++y) {
-            QRgb *row = reinterpret_cast<QRgb *>(img.scanLine(y));
-            for (int x = 0; x < img.width(); ++x) {
-                const int a = qAlpha(row[x]);
-                if (a == 0)
-                    continue;
-                row[x] = qRgba(255, 255, 255, a);
-            }
-        }
-        white.addPixmap(QPixmap::fromImage(img));
-    }
-
-    if (!white.isNull() && key != 0)
-        s_whiteTrayCache.insert(key, white);
-    return white.isNull() ? icon : white;
+    return icon;
 }
 
 static QString trayMenuStyleSheet()

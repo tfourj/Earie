@@ -109,6 +109,19 @@ Item {
                         onTriggered: if (appController) appController.startWithWindows = !appController.startWithWindows
                     }
                     StyledMenuItem {
+                        text: "Tray icon >"
+                        onTriggered: {
+                            if (!trayIconMenu)
+                                return
+                            if (appController && root.window) {
+                                const p = appController.cursorPos()
+                                trayIconMenu.x = p.x - root.window.x
+                                trayIconMenu.y = p.y - root.window.y
+                            }
+                            trayIconMenu.open()
+                        }
+                    }
+                    StyledMenuItem {
                         text: "Open config folder"
                         onTriggered: if (appController) appController.openConfigFolder()
                     }
@@ -156,6 +169,23 @@ Item {
                         text: "Hidden processes..."
                         onTriggered: if (appController) appController.showHiddenItemsWindowSection("processes")
                     }
+                }
+            }
+
+            StyledMenu {
+                id: trayIconMenu
+                StyledMenuItem {
+                    text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
+                    onTriggered: if (appController) appController.useNativeTrayIcon = true
+                }
+                MenuSeparator { }
+                StyledMenuItem {
+                    text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
+                    onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
+                }
+                StyledMenuItem {
+                    text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
+                    onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
                 }
             }
 

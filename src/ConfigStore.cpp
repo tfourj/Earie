@@ -42,6 +42,12 @@ void ConfigStore::load()
     m_scrollWheelVolumeOnHover = o.value(QStringLiteral("scrollWheelVolumeOnHover")).toBool(false);
     m_debugMode = o.value(QStringLiteral("debugMode")).toBool(false);
     m_startWithWindows = o.value(QStringLiteral("startWithWindows")).toBool(false);
+    m_useNativeTrayIcon = o.value(QStringLiteral("useNativeTrayIcon")).toBool(false);
+    const QString trayMode = o.value(QStringLiteral("trayIconMode")).toString();
+    if (trayMode == QLatin1String("black"))
+        m_trayIconMode = TrayIconMode::Black;
+    else
+        m_trayIconMode = TrayIconMode::White;
 
     m_hiddenDevices.clear();
     for (const auto &v : o.value(QStringLiteral("hiddenDevices")).toArray()) {
@@ -92,6 +98,9 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("scrollWheelVolumeOnHover"), m_scrollWheelVolumeOnHover);
     o.insert(QStringLiteral("debugMode"), m_debugMode);
     o.insert(QStringLiteral("startWithWindows"), m_startWithWindows);
+    o.insert(QStringLiteral("useNativeTrayIcon"), m_useNativeTrayIcon);
+    o.insert(QStringLiteral("trayIconMode"),
+        m_trayIconMode == TrayIconMode::Black ? QStringLiteral("black") : QStringLiteral("white"));
 
     {
         QJsonArray arr;
@@ -173,6 +182,22 @@ void ConfigStore::setStartWithWindows(bool v)
     if (m_startWithWindows == v)
         return;
     m_startWithWindows = v;
+    emit changed();
+}
+
+void ConfigStore::setUseNativeTrayIcon(bool v)
+{
+    if (m_useNativeTrayIcon == v)
+        return;
+    m_useNativeTrayIcon = v;
+    emit changed();
+}
+
+void ConfigStore::setTrayIconMode(TrayIconMode v)
+{
+    if (m_trayIconMode == v)
+        return;
+    m_trayIconMode = v;
     emit changed();
 }
 

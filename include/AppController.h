@@ -24,6 +24,8 @@ class AppController final : public QObject
     Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
     Q_PROPERTY(bool startWithWindows READ startWithWindows WRITE setStartWithWindows NOTIFY startWithWindowsChanged)
     Q_PROPERTY(bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
+    Q_PROPERTY(bool useNativeTrayIcon READ useNativeTrayIcon WRITE setUseNativeTrayIcon NOTIFY useNativeTrayIconChanged)
+    Q_PROPERTY(int trayIconMode READ trayIconMode WRITE setTrayIconMode NOTIFY trayIconModeChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -47,6 +49,12 @@ public:
 
     bool debugMode() const { return m_debugMode; }
     void setDebugMode(bool v);
+
+    bool useNativeTrayIcon() const { return m_useNativeTrayIcon; }
+    void setUseNativeTrayIcon(bool v);
+
+    int trayIconMode() const { return m_trayIconMode; }
+    void setTrayIconMode(int v);
 
 public slots:
     Q_INVOKABLE void toggleFlyout();
@@ -78,6 +86,8 @@ signals:
     void scrollWheelVolumeOnHoverChanged();
     void startWithWindowsChanged();
     void debugModeChanged();
+    void useNativeTrayIconChanged();
+    void trayIconModeChanged();
     void closeAllPopupsRequested();
     void hiddenItemsChanged();
 
@@ -125,12 +135,16 @@ private:
     bool m_scrollWheelVolumeOnHover = false;
     bool m_startWithWindows = false;
     bool m_debugMode = false;
+    bool m_useNativeTrayIcon = false;
+    int m_trayIconMode = 0;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;
     bool m_pendingTrayMuted = false;
     int m_lastTrayVolPct = -1;
     bool m_lastTrayMuted = false;
+    int m_lastTrayIconMode = -1;
+    bool m_lastTrayNative = false;
 
     // When the flyout closes due to WindowDeactivate (e.g. clicking the tray icon),
     // the tray "activated" signal may arrive right after and would re-open it.

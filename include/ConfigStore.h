@@ -11,6 +11,8 @@ class ConfigStore final : public QObject
 public:
     enum class Mode { DefaultDeviceOnly, AllDevices };
     Q_ENUM(Mode)
+    enum class TrayIconMode { White, Black };
+    Q_ENUM(TrayIconMode)
 
     explicit ConfigStore(QObject *parent = nullptr);
 
@@ -37,6 +39,12 @@ public:
     bool startWithWindows() const { return m_startWithWindows; }
     void setStartWithWindows(bool v);
 
+    bool useNativeTrayIcon() const { return m_useNativeTrayIcon; }
+    void setUseNativeTrayIcon(bool v);
+
+    TrayIconMode trayIconMode() const { return m_trayIconMode; }
+    void setTrayIconMode(TrayIconMode v);
+
     bool isDeviceHidden(const QString &deviceId) const;
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
@@ -62,6 +70,8 @@ private:
     bool m_scrollWheelVolumeOnHover = false;
     bool m_debugMode = false;
     bool m_startWithWindows = false;
+    bool m_useNativeTrayIcon = false;
+    TrayIconMode m_trayIconMode = TrayIconMode::White;
 
     QSet<QString> m_hiddenDevices;
     QSet<QString> m_hiddenProcessesGlobal; // exePath
