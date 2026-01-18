@@ -70,6 +70,7 @@ public slots:
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
     Q_INVOKABLE void openConfigFolder();
+    Q_INVOKABLE void openAppFolder();
     Q_INVOKABLE QPoint cursorPos() const;
     Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
     Q_INVOKABLE QVariantList hiddenDevicesSnapshot() const;

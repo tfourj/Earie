@@ -545,6 +545,12 @@ void AppController::openConfigFolder()
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
+void AppController::openAppFolder()
+{
+    const QString dir = QCoreApplication::applicationDirPath();
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
 void AppController::toggleFlyout()
 {
     if (!m_view)
