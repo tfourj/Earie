@@ -12,7 +12,7 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     xmlns:svg="http://www.w3.org/2000/svg"><defs
      id="defs2" /><sodipodi:namedview
      id="namedview2"
      pagecolor="#614646"
@@ -31,16 +31,7 @@
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg2"
-     showborder="true" /><image
-     width="74.569321"
-     height="74.569321"
-     preserveAspectRatio="none"
-     xlink:href="file:///E:/Downloads/vol_0-1.png"
-     id="image1"
-     x="0.2401834"
-     y="0.25030494"
-     sodipodi:insensitive="true"
-     style="display:none" /><path
+     showborder="true" /><path
      d="m 2.1685465,50.610319 h 9.0292115 l 14.073996,16.30689 c 0.309542,0.358653 0.721726,0.548744 1.142796,0.548744 0.208524,0 0.418647,-0.04683 0.619085,-0.14235 0.603714,-0.290291 0.997314,-0.97294 0.997314,-1.730508 V 9.4076553 c 0,-0.7575667 -0.3936,-1.4402182 -0.997314,-1.7305091 C 26.428292,7.386853 25.734854,7.5460679 25.271754,8.0835546 L 11.197758,24.390442 H 2.1685465 c -0.8922516,0 -1.61639926,0.839035 -1.61639926,1.872848 v 22.474181 c 0,1.033812 0.72414766,1.872848 1.61639926,1.872848 z M 3.784947,28.136137 h 8.082 c 0.428347,0 0.839722,-0.197582 1.142796,-0.548741 L 24.798151,13.92965 v 47.1424 L 13.009743,47.413365 c -0.303074,-0.351158 -0.714449,-0.54874 -1.142796,-0.54874 h -8.082 z"
      id="path1-8"
      style="fill:#ffffff;stroke-width:0.869952;stroke:#ffffff;stroke-opacity:1;fill-opacity:1"
