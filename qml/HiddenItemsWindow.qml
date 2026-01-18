@@ -136,6 +136,7 @@ Item {
                     spacing: 6
 
                     Item {
+                        visible: viewMode === "all"
                         width: parent.width
                         height: 30
 
@@ -236,6 +237,7 @@ Item {
                     spacing: 6
 
                     Item {
+                        visible: viewMode === "all"
                         width: parent.width
                         height: 30
 
