@@ -936,43 +936,7 @@ void AppController::buildTray()
 
     m_menu->addSeparator();
 
-    m_actionDefaultOnly = m_menu->addAction(tr("Show default device"));
-    m_actionDefaultOnly->setCheckable(true);
-    m_actionAllDevices = m_menu->addAction(tr("Show all devices"));
-    m_actionAllDevices->setCheckable(true);
-
-    auto syncModeChecks = [this]() {
-        if (!m_actionDefaultOnly || !m_actionAllDevices)
-            return;
-        m_actionDefaultOnly->setChecked(!m_allDevices);
-        m_actionAllDevices->setChecked(m_allDevices);
-    };
-    syncModeChecks();
-
-    connect(m_actionDefaultOnly, &QAction::triggered, this, [this, syncModeChecks]() {
-        setAllDevices(false);
-        syncModeChecks();
-    });
-    connect(m_actionAllDevices, &QAction::triggered, this, [this, syncModeChecks]() {
-        setAllDevices(true);
-        syncModeChecks();
-    });
-
-    m_menu->addSeparator();
-
-    m_actionStartWithWindows = m_menu->addAction(tr("Start with Windows"));
-    m_actionStartWithWindows->setCheckable(true);
-    m_actionStartWithWindows->setChecked(m_startWithWindows);
-    connect(m_actionStartWithWindows, &QAction::triggered, this, [this](bool checked) {
-        setStartWithWindows(checked);
-    });
-
-    m_menu->addSeparator();
-
-    QAction *aHiddenItems = m_menu->addAction(tr("Manage hidden items…"));
-    connect(aHiddenItems, &QAction::triggered, this, &AppController::showHiddenItemsWindow);
-
-    m_menu->addSeparator();
+    // Removed mode/startup/hidden-items actions from tray menu.
 
     QAction *aAbout = m_menu->addAction(tr("About"));
     connect(aAbout, &QAction::triggered, this, &AppController::showAboutDialog);
