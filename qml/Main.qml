@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -62,14 +63,18 @@ Item {
             Layout.fillWidth: true
 
             Image {
-                Layout.preferredWidth: 16
-                Layout.preferredHeight: 16
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                Layout.alignment: Qt.AlignVCenter
                 source: "qrc:/assets/earie_white.svg"
+                sourceSize.width: Math.round(20 * Screen.devicePixelRatio)
+                sourceSize.height: Math.round(20 * Screen.devicePixelRatio)
                 smooth: true
             }
 
             Text {
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
                 color: theme.text
                 font.pixelSize: 14
                 text: "Earie"
