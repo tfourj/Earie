@@ -107,6 +107,7 @@ Item {
                         text: "Open config folder"
                         onTriggered: if (appController) appController.openConfigFolder()
                     }
+                    MenuSeparator { }
                     StyledMenuItem {
                         text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
                         onTriggered: if (appController) appController.showSystemSessions = !appController.showSystemSessions
