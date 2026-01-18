@@ -31,6 +31,9 @@ public:
     bool scrollWheelVolumeOnHover() const { return m_scrollWheelVolumeOnHover; }
     void setScrollWheelVolumeOnHover(bool v);
 
+    bool debugMode() const { return m_debugMode; }
+    void setDebugMode(bool v);
+
     bool startWithWindows() const { return m_startWithWindows; }
     void setStartWithWindows(bool v);
 
@@ -57,6 +60,7 @@ private:
     bool m_showSystemSessions = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
+    bool m_debugMode = false;
     bool m_startWithWindows = false;
 
     QSet<QString> m_hiddenDevices;

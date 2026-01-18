@@ -28,6 +28,7 @@ Item {
     property bool devicesExpanded: true
     property bool globalExpanded: true
     property bool perDeviceExpanded: true
+    property string viewMode: "all" // all | devices | processes
 
     function refreshModels() {
         if (!appController)
@@ -94,7 +95,8 @@ Item {
                 Layout.fillWidth: true
                 color: theme.text
                 font.pixelSize: 14
-                text: "Hidden items"
+                text: viewMode === "devices" ? "Hidden devices"
+                      : (viewMode === "processes" ? "Hidden processes" : "Hidden items")
             }
 
             ToolButton {
@@ -129,6 +131,7 @@ Item {
                 spacing: 12
 
                 Column {
+                    visible: viewMode !== "processes"
                     width: parent.width
                     spacing: 6
 
@@ -228,6 +231,7 @@ Item {
                 }
 
                 Column {
+                    visible: viewMode !== "devices"
                     width: parent.width
                     spacing: 6
 

@@ -110,6 +110,7 @@ bool AppController::init()
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
+    m_debugMode = m_config->debugMode();
     applyStartWithWindows(m_startWithWindows);
 
     m_audio = new AudioBackend(this);
@@ -450,6 +451,27 @@ void AppController::setStartWithWindows(bool v)
     if (m_config)
         m_config->setStartWithWindows(m_startWithWindows);
     applyStartWithWindows(m_startWithWindows);
+    if (m_actionStartWithWindows)
+        m_actionStartWithWindows->setChecked(m_startWithWindows);
+    emit startWithWindowsChanged();
+}
+
+void AppController::setDebugMode(bool v)
+{
+    if (m_debugMode == v)
+        return;
+    m_debugMode = v;
+    if (m_config)
+        m_config->setDebugMode(m_debugMode);
+    emit debugModeChanged();
+}
+
+void AppController::openConfigFolder()
+{
+    if (!m_config)
+        return;
+    const QString dir = QFileInfo(m_config->configPath()).absolutePath();
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
 void AppController::toggleFlyout()
@@ -550,6 +572,9 @@ void AppController::showHiddenItemsWindow()
         buildHiddenItemsWindow();
     if (!m_hiddenView)
         return;
+    if (QObject *root = m_hiddenView->rootObject()) {
+        root->setProperty("viewMode", QStringLiteral("all"));
+    }
 
     adjustHiddenItemsHeightToContent();
     positionHiddenItemsWindow(true);
@@ -568,6 +593,31 @@ void AppController::showHiddenItemsWindow()
         adjustHiddenItemsHeightToContent();
         positionHiddenItemsWindow(false);
     });
+}
+
+void AppController::showHiddenItemsWindowSection(const QString &section)
+{
+    showHiddenItemsWindow();
+    if (!m_hiddenView)
+        return;
+    QObject *root = m_hiddenView->rootObject();
+    if (!root)
+        return;
+
+    const QString key = section.trimmed().toLower();
+    if (key == QLatin1String("devices")) {
+        root->setProperty("viewMode", QStringLiteral("devices"));
+        root->setProperty("devicesExpanded", true);
+        root->setProperty("globalExpanded", false);
+        root->setProperty("perDeviceExpanded", false);
+    } else if (key == QLatin1String("processes")) {
+        root->setProperty("viewMode", QStringLiteral("processes"));
+        root->setProperty("devicesExpanded", false);
+        root->setProperty("globalExpanded", true);
+        root->setProperty("perDeviceExpanded", true);
+    }
+
+    requestHiddenItemsRelayout();
 }
 
 void AppController::requestHiddenItemsRelayout()

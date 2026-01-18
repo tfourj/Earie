@@ -22,6 +22,8 @@ class AppController final : public QObject
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
     Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
     Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
+    Q_PROPERTY(bool startWithWindows READ startWithWindows WRITE setStartWithWindows NOTIFY startWithWindowsChanged)
+    Q_PROPERTY(bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -40,11 +42,18 @@ public:
     bool scrollWheelVolumeOnHover() const { return m_scrollWheelVolumeOnHover; }
     void setScrollWheelVolumeOnHover(bool v);
 
+    bool startWithWindows() const { return m_startWithWindows; }
+    void setStartWithWindows(bool v);
+
+    bool debugMode() const { return m_debugMode; }
+    void setDebugMode(bool v);
+
 public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
     Q_INVOKABLE void showHiddenItemsWindow();
+    Q_INVOKABLE void showHiddenItemsWindowSection(const QString &section);
     Q_INVOKABLE void hideHiddenItemsWindow();
     // Called by QML when content height changes (e.g. sessions hidden/unhidden).
     Q_INVOKABLE void requestRelayout();
@@ -52,6 +61,7 @@ public slots:
     Q_INVOKABLE void setDeviceHidden(const QString &deviceId, bool hidden);
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
     Q_INVOKABLE void setProcessHiddenForDevice(const QString &deviceId, const QString &exePath, bool hidden);
+    Q_INVOKABLE void openConfigFolder();
     Q_INVOKABLE QPoint cursorPos() const;
     Q_INVOKABLE QRect cursorScreenAvailableGeometry() const;
     Q_INVOKABLE QVariantList hiddenDevicesSnapshot() const;
@@ -66,6 +76,8 @@ signals:
     void showSystemSessionsChanged();
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
+    void startWithWindowsChanged();
+    void debugModeChanged();
     void closeAllPopupsRequested();
     void hiddenItemsChanged();
 
@@ -80,7 +92,6 @@ private:
     void positionHiddenItemsWindow(bool recomputeAnchor);
     void adjustFlyoutHeightToContent();
     void adjustHiddenItemsHeightToContent();
-    void setStartWithWindows(bool v);
     void applyStartWithWindows(bool v);
     void applyWindowEffectsIfPossible(QQuickView *view);
     void updateTrayIcon();
@@ -113,6 +124,7 @@ private:
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_startWithWindows = false;
+    bool m_debugMode = false;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;

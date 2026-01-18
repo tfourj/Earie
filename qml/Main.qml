@@ -33,6 +33,7 @@ Item {
         target: appController
         function onCloseAllPopupsRequested() {
             if (settingsMenu) settingsMenu.close()
+            if (hiddenMenu) hiddenMenu.close()
         }
     }
 
@@ -95,8 +96,16 @@ Item {
                     y: settingsBtn.height
 
                     StyledMenuItem {
-                        text: "Hidden items..."
-                        onTriggered: if (appController) appController.showHiddenItemsWindow()
+                        text: (appController && appController.debugMode ? "✓ " : "") + "Debug mode"
+                        onTriggered: if (appController) appController.debugMode = !appController.debugMode
+                    }
+                    StyledMenuItem {
+                        text: (appController && appController.startWithWindows ? "✓ " : "") + "Start with Windows"
+                        onTriggered: if (appController) appController.startWithWindows = !appController.startWithWindows
+                    }
+                    StyledMenuItem {
+                        text: "Open config folder"
+                        onTriggered: if (appController) appController.openConfigFolder()
                     }
                     StyledMenuItem {
                         text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
@@ -113,20 +122,52 @@ Item {
                 }
             }
 
-            Text {
-                id: modeText
-                color: theme.textMuted
-                font.pixelSize: 12
-                text: appController && appController.allDevices ? "All devices" : "Default device"
-                opacity: modeMouse.containsMouse ? 1.0 : 0.9
+            ToolButton {
+                id: hiddenBtn
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                padding: 0
+                font.family: theme.iconFont
+                font.pixelSize: 14
+                text: theme.glyphEye
 
-                MouseArea {
-                    id: modeMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: if (appController) appController.allDevices = !appController.allDevices
+                background: Rectangle {
+                    radius: 8
+                    color: hiddenBtn.hovered ? theme.cellHover : "transparent"
                 }
+
+                onClicked: hiddenMenu.open()
+
+                StyledMenu {
+                    id: hiddenMenu
+                    y: hiddenBtn.height
+
+                    StyledMenuItem {
+                        text: "Hidden devices..."
+                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("devices")
+                    }
+                    StyledMenuItem {
+                        text: "Hidden processes..."
+                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("processes")
+                    }
+                }
+            }
+
+            ToolButton {
+                id: modeBtn
+                Layout.preferredHeight: 28
+                padding: 6
+                font.pixelSize: 11
+                text: appController && appController.allDevices ? "All devices" : "Default device"
+
+                background: Rectangle {
+                    radius: 8
+                    color: modeBtn.hovered ? theme.cellHover : "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                }
+
+                onClicked: if (appController) appController.allDevices = !appController.allDevices
             }
         }
 

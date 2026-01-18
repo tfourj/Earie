@@ -40,6 +40,7 @@ void ConfigStore::load()
     m_showSystemSessions = o.value(QStringLiteral("showSystemSessions")).toBool(false);
     m_showProcessStatusOnHover = o.value(QStringLiteral("showProcessStatusOnHover")).toBool(false);
     m_scrollWheelVolumeOnHover = o.value(QStringLiteral("scrollWheelVolumeOnHover")).toBool(false);
+    m_debugMode = o.value(QStringLiteral("debugMode")).toBool(false);
     m_startWithWindows = o.value(QStringLiteral("startWithWindows")).toBool(false);
 
     m_hiddenDevices.clear();
@@ -89,6 +90,7 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("showSystemSessions"), m_showSystemSessions);
     o.insert(QStringLiteral("showProcessStatusOnHover"), m_showProcessStatusOnHover);
     o.insert(QStringLiteral("scrollWheelVolumeOnHover"), m_scrollWheelVolumeOnHover);
+    o.insert(QStringLiteral("debugMode"), m_debugMode);
     o.insert(QStringLiteral("startWithWindows"), m_startWithWindows);
 
     {
@@ -155,6 +157,14 @@ void ConfigStore::setScrollWheelVolumeOnHover(bool v)
     if (m_scrollWheelVolumeOnHover == v)
         return;
     m_scrollWheelVolumeOnHover = v;
+    emit changed();
+}
+
+void ConfigStore::setDebugMode(bool v)
+{
+    if (m_debugMode == v)
+        return;
+    m_debugMode = v;
     emit changed();
 }
 
