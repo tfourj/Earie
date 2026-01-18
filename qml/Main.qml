@@ -109,7 +109,8 @@ Item {
                         onTriggered: if (appController) appController.startWithWindows = !appController.startWithWindows
                     }
                     StyledMenuItem {
-                        text: "Tray icon >"
+                        id: trayIconItem
+                        text: "< Tray icon"
                         onTriggered: {
                             if (!trayIconMenu)
                                 return
