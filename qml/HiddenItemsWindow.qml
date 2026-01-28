@@ -108,7 +108,9 @@ Item {
                 onClicked: {
                     if (appController) {
                         appController.hideHiddenItemsWindow()
-                        appController.showFlyout()
+                        Qt.callLater(function() {
+                            appController.showFlyout()
+                        })
                     }
                 }
             }
