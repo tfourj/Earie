@@ -23,6 +23,12 @@ Item {
         + 4
     )
     property bool trayIconExpanded: false
+    function reopenSettingsMenu() {
+        Qt.callLater(function() {
+            if (settingsMenu)
+                settingsMenu.open()
+        })
+    }
 
     onContentHeightHintChanged: {
         if (appController) appController.requestRelayout()
@@ -103,21 +109,24 @@ Item {
 
                     StyledMenuItem {
                         text: (appController && appController.debugMode ? "✓ " : "") + "Debug mode"
-                        onTriggered: if (appController) appController.debugMode = !appController.debugMode
+                        onTriggered: {
+                            if (appController) appController.debugMode = !appController.debugMode
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         text: (appController && appController.startWithWindows ? "✓ " : "") + "Start with Windows"
-                        onTriggered: if (appController) appController.startWithWindows = !appController.startWithWindows
+                        onTriggered: {
+                            if (appController) appController.startWithWindows = !appController.startWithWindows
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         id: trayIconItem
                         text: (root.trayIconExpanded ? "▼ " : "► ") + "Tray icon options"
                         onTriggered: {
                             root.trayIconExpanded = !root.trayIconExpanded
-                            Qt.callLater(function() {
-                                if (settingsMenu)
-                                    settingsMenu.open()
-                            })
+                            root.reopenSettingsMenu()
                         }
                     }
                     StyledMenuItem {
@@ -126,7 +135,10 @@ Item {
                         height: root.trayIconExpanded ? 30 : 0
                         leftPadding: 26
                         text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
-                        onTriggered: if (appController) appController.useNativeTrayIcon = true
+                        onTriggered: {
+                            if (appController) appController.useNativeTrayIcon = true
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         visible: root.trayIconExpanded
@@ -134,7 +146,10 @@ Item {
                         height: root.trayIconExpanded ? 30 : 0
                         leftPadding: 26
                         text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
-                        onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
+                        onTriggered: {
+                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         visible: root.trayIconExpanded
@@ -142,7 +157,10 @@ Item {
                         height: root.trayIconExpanded ? 30 : 0
                         leftPadding: 26
                         text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
-                        onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
+                        onTriggered: {
+                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         text: "Open config folder"
@@ -155,15 +173,24 @@ Item {
                     MenuSeparator { }
                     StyledMenuItem {
                         text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
-                        onTriggered: if (appController) appController.showSystemSessions = !appController.showSystemSessions
+                        onTriggered: {
+                            if (appController) appController.showSystemSessions = !appController.showSystemSessions
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
-                        onTriggered: if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
+                        onTriggered: {
+                            if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
+                            root.reopenSettingsMenu()
+                        }
                     }
                     StyledMenuItem {
                         text: (appController && appController.scrollWheelVolumeOnHover ? "✓ " : "") + "Scroll wheel changes volume on hover (2%)"
-                        onTriggered: if (appController) appController.scrollWheelVolumeOnHover = !appController.scrollWheelVolumeOnHover
+                        onTriggered: {
+                            if (appController) appController.scrollWheelVolumeOnHover = !appController.scrollWheelVolumeOnHover
+                            root.reopenSettingsMenu()
+                        }
                     }
                 }
             }
