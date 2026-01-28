@@ -22,6 +22,7 @@ Item {
         + listView.contentHeight
         + 4
     )
+    property bool trayIconExpanded: false
 
     onContentHeightHintChanged: {
         if (appController) appController.requestRelayout()
@@ -110,17 +111,38 @@ Item {
                     }
                     StyledMenuItem {
                         id: trayIconItem
-                        text: "< Tray icon"
+                        text: (root.trayIconExpanded ? "▼ " : "► ") + "Tray icon options"
                         onTriggered: {
-                            if (!trayIconMenu)
-                                return
-                            if (appController && root.window) {
-                                const p = appController.cursorPos()
-                                trayIconMenu.x = p.x - root.window.x
-                                trayIconMenu.y = p.y - root.window.y
-                            }
-                            trayIconMenu.open()
+                            root.trayIconExpanded = !root.trayIconExpanded
+                            Qt.callLater(function() {
+                                if (settingsMenu)
+                                    settingsMenu.open()
+                            })
                         }
+                    }
+                    StyledMenuItem {
+                        visible: root.trayIconExpanded
+                        implicitHeight: root.trayIconExpanded ? 30 : 0
+                        height: root.trayIconExpanded ? 30 : 0
+                        leftPadding: 26
+                        text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
+                        onTriggered: if (appController) appController.useNativeTrayIcon = true
+                    }
+                    StyledMenuItem {
+                        visible: root.trayIconExpanded
+                        implicitHeight: root.trayIconExpanded ? 30 : 0
+                        height: root.trayIconExpanded ? 30 : 0
+                        leftPadding: 26
+                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
+                        onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
+                    }
+                    StyledMenuItem {
+                        visible: root.trayIconExpanded
+                        implicitHeight: root.trayIconExpanded ? 30 : 0
+                        height: root.trayIconExpanded ? 30 : 0
+                        leftPadding: 26
+                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
+                        onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
                     }
                     StyledMenuItem {
                         text: "Open config folder"
@@ -174,23 +196,6 @@ Item {
                         text: "Hidden processes..."
                         onTriggered: if (appController) appController.showHiddenItemsWindowSection("processes")
                     }
-                }
-            }
-
-            StyledMenu {
-                id: trayIconMenu
-                StyledMenuItem {
-                    text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
-                    onTriggered: if (appController) appController.useNativeTrayIcon = true
-                }
-                MenuSeparator { }
-                StyledMenuItem {
-                    text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
-                    onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
-                }
-                StyledMenuItem {
-                    text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
-                    onTriggered: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
                 }
             }
 
