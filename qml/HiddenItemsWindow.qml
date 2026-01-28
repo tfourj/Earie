@@ -91,6 +91,28 @@ Item {
             id: headerRow
             Layout.fillWidth: true
 
+            ToolButton {
+                id: backBtn
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                padding: 0
+                text: "<"
+                font.pixelSize: 12
+                visible: viewMode !== "all"
+
+                background: Rectangle {
+                    radius: 8
+                    color: backBtn.hovered ? theme.cellHover : "transparent"
+                }
+
+                onClicked: {
+                    if (appController) {
+                        appController.hideHiddenItemsWindow()
+                        appController.showFlyout()
+                    }
+                }
+            }
+
             Text {
                 Layout.fillWidth: true
                 color: theme.text
@@ -131,52 +153,19 @@ Item {
                 spacing: 12
 
                 Column {
-                    visible: viewMode !== "processes"
+                    visible: viewMode === "devices"
                     width: parent.width
                     spacing: 6
 
-                    Item {
-                        visible: viewMode === "all"
-                        width: parent.width
-                        height: 30
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: devicesExpanded = !devicesExpanded
-                        }
-
-                        Text {
-                            text: theme.glyphChevron
-                            font.family: theme.iconFont
-                            font.pixelSize: 12
-                            color: theme.textMuted
-                            anchors.left: parent.left
-                            anchors.leftMargin: 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            rotation: devicesExpanded ? 90 : 0
-                        }
-
-                        Text {
-                            color: theme.text
-                            font.pixelSize: 12
-                            text: "Hidden devices"
-                            anchors.left: parent.left
-                            anchors.leftMargin: 20
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
                     Text {
-                        visible: devicesExpanded && hiddenDevices.length === 0
+                        visible: hiddenDevices.length === 0
                         color: theme.textMuted
                         font.pixelSize: 11
                         text: "(No devices)"
                     }
 
                     Repeater {
-                        model: devicesExpanded ? hiddenDevices : []
+                        model: hiddenDevices
                         delegate: Rectangle {
                             width: parent.width
                             height: 34
@@ -232,50 +221,14 @@ Item {
                 }
 
                 Column {
-                    visible: viewMode !== "devices"
+                    visible: viewMode === "processes"
                     width: parent.width
                     spacing: 6
-
-                    Item {
-                        visible: viewMode === "all"
-                        width: parent.width
-                        height: 30
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                globalExpanded = !globalExpanded
-                                perDeviceExpanded = !perDeviceExpanded
-                            }
-                        }
-
-                        Text {
-                            text: theme.glyphChevron
-                            font.family: theme.iconFont
-                            font.pixelSize: 12
-                            color: theme.textMuted
-                            anchors.left: parent.left
-                            anchors.leftMargin: 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            rotation: (globalExpanded || perDeviceExpanded) ? 90 : 0
-                        }
-
-                        Text {
-                            color: theme.text
-                            font.pixelSize: 12
-                            text: "Hidden processes"
-                            anchors.left: parent.left
-                            anchors.leftMargin: 20
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
 
                     Column {
                         width: parent.width
                         spacing: 6
-                        visible: globalExpanded
+                        visible: true
 
                         Text {
                             color: theme.textMuted
@@ -349,7 +302,7 @@ Item {
                     Column {
                         width: parent.width
                         spacing: 6
-                        visible: perDeviceExpanded
+                        visible: true
 
                         Text {
                             color: theme.textMuted
