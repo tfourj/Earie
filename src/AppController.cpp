@@ -179,6 +179,13 @@ bool AppController::init()
     connect(m_audio, &AudioBackend::devicesChanged, this, [this]() { emit hiddenItemsChanged(); });
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, [this]() { emit hiddenItemsChanged(); });
 
+    // Warm a small icon set once after the first snapshot so background start has icons ready.
+    QTimer::singleShot(500, this, [this]() {
+        if (!m_audio)
+            return;
+        m_audio->preloadIconsForActiveSessions(64);
+    });
+
     // If the user clicks the desktop while a QML menu is open, the flyout is already deactivated
     // (because the menu is its own native window), so WindowDeactivate won't fire again.
     // Close popups + flyout on app deactivation to match expected behavior.

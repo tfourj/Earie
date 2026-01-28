@@ -483,6 +483,30 @@ QVector<AudioBackend::ProcessSnapshot> AudioBackend::knownProcessesForDeviceSnap
     return out;
 }
 
+void AudioBackend::preloadIconsForActiveSessions(int maxCount)
+{
+    if (!m_iconCache)
+        return;
+    if (maxCount <= 0)
+        return;
+
+    QSet<QString> seen;
+    int loaded = 0;
+    for (const auto &ds : m_lastSnapshot) {
+        for (const auto &ss : ds.sessions) {
+            if (ss.exePath.isEmpty())
+                continue;
+            if (seen.contains(ss.exePath))
+                continue;
+            seen.insert(ss.exePath);
+            m_iconCache->ensureIconForExePath(ss.exePath);
+            loaded++;
+            if (loaded >= maxCount)
+                return;
+        }
+    }
+}
+
 void AudioBackend::setDeviceVolume(const QString &deviceId, double volume01)
 {
     if (auto *d = m_deviceById.value(deviceId, nullptr))
