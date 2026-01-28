@@ -232,14 +232,14 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
             if (!sess) {
                 sess = new AudioSession(this, ds.id, ss.pid, ss.exePath, this);
                 sess->setDisplayName(ss.displayName);
-                sess->setIconKey(m_iconCache ? m_iconCache->ensureIconForExePath(ss.exePath) : ss.exePath);
+                sess->setIconKey(ss.exePath);
                 sess->setVolumeInternal(ss.volume);
                 sess->setMutedInternal(ss.muted);
                 sess->setActiveInternal(ss.active);
                 map.insert(key, sess);
             } else {
                 sess->setDisplayName(ss.displayName);
-                sess->setIconKey(m_iconCache ? m_iconCache->ensureIconForExePath(ss.exePath) : ss.exePath);
+                sess->setIconKey(ss.exePath);
                 sess->setVolumeInternal(ss.volume);
                 sess->setMutedInternal(ss.muted);
                 sess->setActiveInternal(ss.active);
@@ -309,6 +309,11 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         AudioDevice *dev = m_deviceById.value(id, nullptr);
         if (!dev)
             continue;
+
+        auto removedSessions = m_sessionByKeyByDevice.take(id);
+        for (auto it = removedSessions.begin(); it != removedSessions.end(); ++it) {
+            delete it.value();
+        }
 
         const int row = m_deviceModel->indexOfDeviceId(id);
         if (row >= 0)

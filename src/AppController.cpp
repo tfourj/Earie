@@ -166,18 +166,6 @@ bool AppController::init()
     m_audio->setShowSystemSessions(m_showSystemSessions);
     m_audio->start();
 
-    // Preload icons for known processes to avoid choppiness on first open.
-    if (auto *cache = m_audio->iconCache()) {
-        const auto known = m_audio->knownProcessesSnapshot();
-        qInfo() << "Preloading" << known.size() << "process icons...";
-        for (const auto &p : known) {
-            if (!p.exePath.isEmpty()) {
-                cache->ensureIconForExePath(p.exePath);
-            }
-        }
-        qInfo() << "Finished preloading process icons.";
-    }
-
     buildFlyout();
     buildHiddenItemsWindow();
     buildTray();

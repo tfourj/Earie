@@ -65,6 +65,7 @@ Item {
                 width: 20
                 height: 20
                 smooth: true
+                cache: false
                 source: sessionObject && sessionObject.iconKey ? ("image://appicon/" + encodeURIComponent(sessionObject.iconKey)) : ""
             }
 

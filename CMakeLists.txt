@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Earie VERSION 1.1.0 LANGUAGES CXX)
+project(Earie VERSION 1.1.1 LANGUAGES CXX)
 
 set(TARGET_NAME Earie)
 
