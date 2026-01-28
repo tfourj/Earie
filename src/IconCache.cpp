@@ -6,6 +6,11 @@
 #include <windows.h>
 #include <shellapi.h>
 
+namespace {
+const int kCacheMax = 800;
+const int kCacheTrimTo = 600;
+}
+
 static QImage qimageFromHICON(HICON hIcon, int desiredPx)
 {
     if (!hIcon)
@@ -78,9 +83,9 @@ QString IconCache::ensureIconForExePath(const QString &exePath)
         m_order.append(exePath);
     }
     m_cache.insert(exePath, img);
-    if (m_order.size() > 2000) {
+    if (m_order.size() > kCacheMax) {
         int evicted = 0;
-        while (m_order.size() > 1500) {
+        while (m_order.size() > kCacheTrimTo) {
             QString old = m_order.takeFirst();
             if (m_cache.remove(old) > 0) {
                 qDebug() << "IconCache: evicted" << old;
@@ -114,9 +119,9 @@ QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requ
                 m_order.append(key);
             }
             m_cache.insert(key, img);
-            if (m_order.size() > 2000) {
+            if (m_order.size() > kCacheMax) {
                 int evicted = 0;
-                while (m_order.size() > 1500) {
+                while (m_order.size() > kCacheTrimTo) {
                     QString old = m_order.takeFirst();
                     if (m_cache.remove(old) > 0) {
                         qDebug() << "IconCache: evicted" << old;
@@ -136,6 +141,35 @@ QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requ
     if (size)
         *size = img.size();
     return img;
+}
+
+void IconCache::purgeUnused(const QSet<QString> &keepKeys)
+{
+    QMutexLocker lock(&m_mutex);
+    if (m_cache.isEmpty())
+        return;
+
+    int evicted = 0;
+    for (auto it = m_cache.begin(); it != m_cache.end(); ) {
+        if (!keepKeys.contains(it.key())) {
+            qDebug() << "IconCache: purged" << it.key();
+            it = m_cache.erase(it);
+            evicted++;
+        } else {
+            ++it;
+        }
+    }
+
+    if (evicted > 0) {
+        QList<QString> newOrder;
+        newOrder.reserve(m_order.size());
+        for (const auto &k : m_order) {
+            if (m_cache.contains(k))
+                newOrder.append(k);
+        }
+        m_order.swap(newOrder);
+        qDebug() << "IconCache: purged" << evicted << "entries, cache size" << m_cache.size() << "order size" << m_order.size();
+    }
 }
 
 QImage IconCache::loadSmallIconForExePath(const QString &exePath) const

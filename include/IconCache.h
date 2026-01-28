@@ -5,6 +5,7 @@
 #include <QList>
 #include <QMutex>
 #include <QQuickImageProvider>
+#include <QSet>
 
 class IconCache final : public QQuickImageProvider
 {
@@ -13,6 +14,7 @@ public:
 
     // Key is stable (exePath). QML uses: image://appicon/<url-escaped-key>
     QString ensureIconForExePath(const QString &exePath);
+    void purgeUnused(const QSet<QString> &keepKeys);
 
     QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
 

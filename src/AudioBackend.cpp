@@ -339,6 +339,19 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         m_defaultDeviceMuted = defMuted;
     }
 
+    if (anyProcessesChanged && m_iconCache) {
+        QSet<QString> keep;
+        for (auto devIt = m_sessionByKeyByDevice.constBegin(); devIt != m_sessionByKeyByDevice.constEnd(); ++devIt) {
+            const auto &sessions = devIt.value();
+            for (auto it = sessions.constBegin(); it != sessions.constEnd(); ++it) {
+                auto *sess = it.value();
+                if (sess && !sess->exePath().isEmpty())
+                    keep.insert(sess->exePath());
+            }
+        }
+        m_iconCache->purgeUnused(keep);
+    }
+
     rebuildMenusIfChanged(anyDevicesChanged, anyProcessesChanged, defaultChanged);
 }
 
