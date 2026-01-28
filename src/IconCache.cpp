@@ -82,8 +82,10 @@ QString IconCache::ensureIconForExePath(const QString &exePath)
         int evicted = 0;
         while (m_order.size() > 1500) {
             QString old = m_order.takeFirst();
-            m_cache.remove(old);
-            evicted++;
+            if (m_cache.remove(old) > 0) {
+                qDebug() << "IconCache: evicted" << old;
+                evicted++;
+            }
         }
         if (evicted > 0) {
             qDebug() << "IconCache: evicted" << evicted << "entries, cache size" << m_cache.size() << "order size" << m_order.size();
@@ -116,8 +118,10 @@ QImage IconCache::requestImage(const QString &id, QSize *size, const QSize &requ
                 int evicted = 0;
                 while (m_order.size() > 1500) {
                     QString old = m_order.takeFirst();
-                    m_cache.remove(old);
-                    evicted++;
+                    if (m_cache.remove(old) > 0) {
+                        qDebug() << "IconCache: evicted" << old;
+                        evicted++;
+                    }
                 }
                 if (evicted > 0) {
                     qDebug() << "IconCache: evicted" << evicted << "entries, cache size" << m_cache.size() << "order size" << m_order.size();
