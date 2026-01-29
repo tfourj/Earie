@@ -8,7 +8,7 @@ Menu {
 
     padding: 6
     implicitWidth: 190
-    closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+    closePolicy: Popup.CloseOnReleaseOutside | Popup.CloseOnEscape
 
     onAboutToShow: if (appController) appController.popupOpened()
     onAboutToHide: if (appController) appController.popupClosed()

@@ -92,6 +92,7 @@ Item {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
                 padding: 0
+                property bool wasOpenOnPress: false
                 font.family: theme.iconFont
                 font.pixelSize: 14
                 text: theme.glyphSettings
@@ -101,7 +102,15 @@ Item {
                     color: settingsBtn.hovered ? theme.cellHover : "transparent"
                 }
 
-                onClicked: settingsMenu.open()
+                onPressed: wasOpenOnPress = settingsMenu.visible
+                onClicked: {
+                    if (wasOpenOnPress) {
+                        wasOpenOnPress = false
+                        settingsMenu.close()
+                        return
+                    }
+                    settingsMenu.open()
+                }
 
                 StyledMenu {
                     id: settingsMenu
@@ -200,6 +209,7 @@ Item {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
                 padding: 0
+                property bool wasOpenOnPress: false
                 font.family: theme.iconFont
                 font.pixelSize: 14
                 text: theme.glyphEye
@@ -209,7 +219,15 @@ Item {
                     color: hiddenBtn.hovered ? theme.cellHover : "transparent"
                 }
 
-                onClicked: hiddenMenu.open()
+                onPressed: wasOpenOnPress = hiddenMenu.visible
+                onClicked: {
+                    if (wasOpenOnPress) {
+                        wasOpenOnPress = false
+                        hiddenMenu.close()
+                        return
+                    }
+                    hiddenMenu.open()
+                }
 
                 StyledMenu {
                     id: hiddenMenu
