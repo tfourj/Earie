@@ -11,6 +11,7 @@
 #include <QEvent>
 #include <QDateTime>
 #include <QGuiApplication>
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QFile>
 #include <QMenu>
@@ -53,9 +54,19 @@ static void setFileLoggingEnabled(bool enabled);
 
 static bool s_fileLoggingEnabled = false;
 
+static QString appPath(const QString &fileName = QString())
+{
+    const QString dir = QCoreApplication::applicationDirPath();
+    if (dir.isEmpty())
+        return fileName;
+    if (fileName.isEmpty())
+        return dir;
+    return QDir(dir).filePath(fileName);
+}
+
 static void fileLogMessageHandler(QtMsgType, const QMessageLogContext &, const QString &msg)
 {
-    QFile logFile(QStringLiteral("earie.log"));
+    QFile logFile(appPath(QStringLiteral("earie.log")));
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&logFile);
         out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << " " << msg << "\n";
@@ -70,12 +81,14 @@ static void setFileLoggingEnabled(bool enabled)
     s_fileLoggingEnabled = enabled;
 
     if (enabled) {
-        if (QFile::exists(QStringLiteral("earie.log"))) {
-            if (QFile::exists(QStringLiteral("earie.old.log")))
-                QFile::remove(QStringLiteral("earie.old.log"));
-            QFile::rename(QStringLiteral("earie.log"), QStringLiteral("earie.old.log"));
+        const QString logPath = appPath(QStringLiteral("earie.log"));
+        const QString oldLogPath = appPath(QStringLiteral("earie.old.log"));
+        if (QFile::exists(logPath)) {
+            if (QFile::exists(oldLogPath))
+                QFile::remove(oldLogPath);
+            QFile::rename(logPath, oldLogPath);
         }
-        QFile logFile(QStringLiteral("earie.log"));
+        QFile logFile(logPath);
         if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream out(&logFile);
             out << "logging started at " << QDateTime::currentDateTime().toString() << "\n";
@@ -542,7 +555,7 @@ void AppController::openConfigFolder()
 
 void AppController::openAppFolder()
 {
-    const QString dir = QCoreApplication::applicationDirPath();
+    const QString dir = appPath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
