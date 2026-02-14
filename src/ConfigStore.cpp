@@ -55,6 +55,20 @@ void ConfigStore::load()
         if (!id.isEmpty())
             m_hiddenDevices.insert(id);
     }
+    m_hiddenDeviceNames.clear();
+    const QJsonObject hiddenNames = o.value(QStringLiteral("hiddenDeviceNames")).toObject();
+    for (auto it = hiddenNames.begin(); it != hiddenNames.end(); ++it) {
+        const QString id = it.key();
+        const QString name = it.value().toString().trimmed();
+        if (!id.isEmpty() && !name.isEmpty())
+            m_hiddenDeviceNames.insert(id, name);
+    }
+    for (auto it = m_hiddenDeviceNames.begin(); it != m_hiddenDeviceNames.end();) {
+        if (!m_hiddenDevices.contains(it.key()))
+            it = m_hiddenDeviceNames.erase(it);
+        else
+            ++it;
+    }
 
     m_hiddenProcessesGlobal.clear();
     for (const auto &v : o.value(QStringLiteral("hiddenProcessesGlobal")).toArray()) {
@@ -107,6 +121,15 @@ void ConfigStore::save() const
         for (const auto &id : m_hiddenDevices)
             arr.append(id);
         o.insert(QStringLiteral("hiddenDevices"), arr);
+    }
+    {
+        QJsonObject names;
+        for (const auto &id : m_hiddenDevices) {
+            const QString name = m_hiddenDeviceNames.value(id).trimmed();
+            if (!name.isEmpty())
+                names.insert(id, name);
+        }
+        o.insert(QStringLiteral("hiddenDeviceNames"), names);
     }
     {
         QJsonArray arr;
@@ -211,6 +234,24 @@ QStringList ConfigStore::hiddenDevices() const
     return QStringList(m_hiddenDevices.begin(), m_hiddenDevices.end());
 }
 
+QString ConfigStore::hiddenDeviceName(const QString &deviceId) const
+{
+    return m_hiddenDeviceNames.value(deviceId);
+}
+
+void ConfigStore::rememberDeviceName(const QString &deviceId, const QString &deviceName)
+{
+    if (deviceId.isEmpty() || !m_hiddenDevices.contains(deviceId))
+        return;
+    const QString trimmed = deviceName.trimmed();
+    if (trimmed.isEmpty())
+        return;
+    if (m_hiddenDeviceNames.value(deviceId) == trimmed)
+        return;
+    m_hiddenDeviceNames.insert(deviceId, trimmed);
+    emit changed();
+}
+
 void ConfigStore::setDeviceHidden(const QString &deviceId, bool hidden)
 {
     if (deviceId.isEmpty())
@@ -220,9 +261,83 @@ void ConfigStore::setDeviceHidden(const QString &deviceId, bool hidden)
         return;
     if (hidden)
         m_hiddenDevices.insert(deviceId);
-    else
+    else {
         m_hiddenDevices.remove(deviceId);
+        m_hiddenDeviceNames.remove(deviceId);
+    }
     emit changed();
+}
+
+bool ConfigStore::remapDeviceId(const QString &oldDeviceId, const QString &newDeviceId, const QString &newDeviceName)
+{
+    if (oldDeviceId.isEmpty() || newDeviceId.isEmpty() || oldDeviceId == newDeviceId) {
+        if (!newDeviceId.isEmpty()) {
+            const QString trimmed = newDeviceName.trimmed();
+            if (!trimmed.isEmpty() && m_hiddenDevices.contains(newDeviceId) && m_hiddenDeviceNames.value(newDeviceId) != trimmed) {
+                m_hiddenDeviceNames.insert(newDeviceId, trimmed);
+                emit changed();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool didChange = false;
+    const QString oldName = m_hiddenDeviceNames.value(oldDeviceId).trimmed();
+    const QString existingNewName = m_hiddenDeviceNames.value(newDeviceId).trimmed();
+    const QString preferredName = !newDeviceName.trimmed().isEmpty() ? newDeviceName.trimmed()
+                                : (!existingNewName.isEmpty() ? existingNewName : oldName);
+
+    if (m_hiddenDevices.remove(oldDeviceId) > 0) {
+        didChange = true;
+        if (!m_hiddenDevices.contains(newDeviceId)) {
+            m_hiddenDevices.insert(newDeviceId);
+        }
+    }
+    if (m_hiddenDeviceNames.remove(oldDeviceId) > 0)
+        didChange = true;
+    if (m_hiddenDevices.contains(newDeviceId) && !preferredName.isEmpty() && m_hiddenDeviceNames.value(newDeviceId) != preferredName) {
+        m_hiddenDeviceNames.insert(newDeviceId, preferredName);
+        didChange = true;
+    }
+
+    bool orderChanged = false;
+    for (auto &id : m_deviceOrder) {
+        if (id == oldDeviceId) {
+            id = newDeviceId;
+            orderChanged = true;
+        }
+    }
+    if (orderChanged) {
+        QStringList deduped;
+        deduped.reserve(m_deviceOrder.size());
+        QSet<QString> seen;
+        for (const auto &id : m_deviceOrder) {
+            if (id.isEmpty() || seen.contains(id))
+                continue;
+            seen.insert(id);
+            deduped.append(id);
+        }
+        if (deduped != m_deviceOrder)
+            m_deviceOrder = deduped;
+        didChange = true;
+    }
+
+    const auto itOld = m_hiddenProcessesPerDevice.constFind(oldDeviceId);
+    if (itOld != m_hiddenProcessesPerDevice.constEnd()) {
+        QSet<QString> merged = m_hiddenProcessesPerDevice.value(newDeviceId);
+        merged.unite(itOld.value());
+        m_hiddenProcessesPerDevice.remove(oldDeviceId);
+        if (merged.isEmpty())
+            m_hiddenProcessesPerDevice.remove(newDeviceId);
+        else
+            m_hiddenProcessesPerDevice.insert(newDeviceId, merged);
+        didChange = true;
+    }
+
+    if (didChange)
+        emit changed();
+    return didChange;
 }
 
 void ConfigStore::setDeviceOrder(const QStringList &order)

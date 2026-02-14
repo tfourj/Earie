@@ -282,9 +282,10 @@ QVariantList AppController::hiddenDevicesSnapshot() const
     for (const auto &hiddenId : m_config->hiddenDevices()) {
         if (hiddenId.isEmpty() || seen.contains(hiddenId))
             continue;
+        const QString hiddenName = m_config->hiddenDeviceName(hiddenId).trimmed();
         QVariantMap m;
         m.insert(QStringLiteral("deviceId"), hiddenId);
-        m.insert(QStringLiteral("name"), hiddenId);
+        m.insert(QStringLiteral("name"), hiddenName.isEmpty() ? hiddenId : hiddenName);
         m.insert(QStringLiteral("connected"), false);
         m.insert(QStringLiteral("hidden"), true);
         out.append(m);
@@ -1289,7 +1290,9 @@ void AppController::rebuildHiddenMenus()
         for (const auto &hiddenId : m_config->hiddenDevices()) {
             if (hiddenId.isEmpty() || seen.contains(hiddenId))
                 continue;
-            addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(hiddenId), true, [this, id = hiddenId](bool checked) {
+            const QString hiddenName = m_config->hiddenDeviceName(hiddenId).trimmed();
+            const QString label = hiddenName.isEmpty() ? hiddenId : hiddenName;
+            addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(label), true, [this, id = hiddenId](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh();
                 emit hiddenItemsChanged();

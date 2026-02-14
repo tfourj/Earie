@@ -162,6 +162,48 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
     if (!m_deviceModel)
         return;
 
+    if (m_config) {
+        QSet<QString> connectedIds;
+        QHash<QString, QStringList> connectedIdsByName;
+        QHash<QString, QString> connectedNameById;
+        connectedIds.reserve(devices.size());
+        connectedIdsByName.reserve(devices.size());
+        connectedNameById.reserve(devices.size());
+
+        for (const auto &ds : devices) {
+            if (ds.id.isEmpty())
+                continue;
+            connectedIds.insert(ds.id);
+            connectedNameById.insert(ds.id, ds.name);
+            const QString nameKey = ds.name.trimmed().toCaseFolded();
+            if (!nameKey.isEmpty())
+                connectedIdsByName[nameKey].append(ds.id);
+        }
+
+        QHash<QString, QStringList> disconnectedHiddenIdsByName;
+        const auto hiddenIds = m_config->hiddenDevices();
+        disconnectedHiddenIdsByName.reserve(hiddenIds.size());
+        for (const auto &hiddenId : hiddenIds) {
+            if (hiddenId.isEmpty() || connectedIds.contains(hiddenId))
+                continue;
+            const QString hiddenNameKey = m_config->hiddenDeviceName(hiddenId).trimmed().toCaseFolded();
+            if (!hiddenNameKey.isEmpty())
+                disconnectedHiddenIdsByName[hiddenNameKey].append(hiddenId);
+        }
+
+        for (auto it = disconnectedHiddenIdsByName.constBegin(); it != disconnectedHiddenIdsByName.constEnd(); ++it) {
+            const QStringList oldIds = it.value();
+            const QStringList newIds = connectedIdsByName.value(it.key());
+            if (oldIds.size() != 1 || newIds.size() != 1)
+                continue;
+            const QString oldId = oldIds.constFirst();
+            const QString newId = newIds.constFirst();
+            if (oldId == newId)
+                continue;
+            (void)m_config->remapDeviceId(oldId, newId, connectedNameById.value(newId));
+        }
+    }
+
     bool anyDevicesChanged = false;
     bool anyProcessesChanged = false;
 
@@ -186,8 +228,10 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
             defMuted = ds.muted;
         }
 
-        if (m_config && m_config->isDeviceHidden(ds.id))
+        if (m_config && m_config->isDeviceHidden(ds.id)) {
+            m_config->rememberDeviceName(ds.id, ds.name);
             continue;
+        }
 
         if (!m_allDevices && !ds.isDefault)
             continue;
