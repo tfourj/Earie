@@ -48,6 +48,9 @@ public:
     bool isDeviceHidden(const QString &deviceId) const;
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
+    QString hiddenDeviceName(const QString &deviceId) const;
+    void rememberDeviceName(const QString &deviceId, const QString &deviceName);
+    bool remapDeviceId(const QString &oldDeviceId, const QString &newDeviceId, const QString &newDeviceName = QString());
     QStringList deviceOrder() const { return m_deviceOrder; }
     void setDeviceOrder(const QStringList &order);
 
@@ -74,6 +77,7 @@ private:
     TrayIconMode m_trayIconMode = TrayIconMode::White;
 
     QSet<QString> m_hiddenDevices;
+    QHash<QString, QString> m_hiddenDeviceNames; // deviceId -> last known name (hidden devices)
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
 

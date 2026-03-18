@@ -11,6 +11,7 @@
 #include <QEvent>
 #include <QDateTime>
 #include <QGuiApplication>
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QFile>
 #include <QMenu>
@@ -53,9 +54,19 @@ static void setFileLoggingEnabled(bool enabled);
 
 static bool s_fileLoggingEnabled = false;
 
+static QString appPath(const QString &fileName = QString())
+{
+    const QString dir = QCoreApplication::applicationDirPath();
+    if (dir.isEmpty())
+        return fileName;
+    if (fileName.isEmpty())
+        return dir;
+    return QDir(dir).filePath(fileName);
+}
+
 static void fileLogMessageHandler(QtMsgType, const QMessageLogContext &, const QString &msg)
 {
-    QFile logFile(QStringLiteral("earie.log"));
+    QFile logFile(appPath(QStringLiteral("earie.log")));
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&logFile);
         out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << " " << msg << "\n";
@@ -70,12 +81,14 @@ static void setFileLoggingEnabled(bool enabled)
     s_fileLoggingEnabled = enabled;
 
     if (enabled) {
-        if (QFile::exists(QStringLiteral("earie.log"))) {
-            if (QFile::exists(QStringLiteral("earie.old.log")))
-                QFile::remove(QStringLiteral("earie.old.log"));
-            QFile::rename(QStringLiteral("earie.log"), QStringLiteral("earie.old.log"));
+        const QString logPath = appPath(QStringLiteral("earie.log"));
+        const QString oldLogPath = appPath(QStringLiteral("earie.old.log"));
+        if (QFile::exists(logPath)) {
+            if (QFile::exists(oldLogPath))
+                QFile::remove(oldLogPath);
+            QFile::rename(logPath, oldLogPath);
         }
-        QFile logFile(QStringLiteral("earie.log"));
+        QFile logFile(logPath);
         if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream out(&logFile);
             out << "logging started at " << QDateTime::currentDateTime().toString() << "\n";
@@ -269,9 +282,10 @@ QVariantList AppController::hiddenDevicesSnapshot() const
     for (const auto &hiddenId : m_config->hiddenDevices()) {
         if (hiddenId.isEmpty() || seen.contains(hiddenId))
             continue;
+        const QString hiddenName = m_config->hiddenDeviceName(hiddenId).trimmed();
         QVariantMap m;
         m.insert(QStringLiteral("deviceId"), hiddenId);
-        m.insert(QStringLiteral("name"), hiddenId);
+        m.insert(QStringLiteral("name"), hiddenName.isEmpty() ? hiddenId : hiddenName);
         m.insert(QStringLiteral("connected"), false);
         m.insert(QStringLiteral("hidden"), true);
         out.append(m);
@@ -542,7 +556,7 @@ void AppController::openConfigFolder()
 
 void AppController::openAppFolder()
 {
-    const QString dir = QCoreApplication::applicationDirPath();
+    const QString dir = appPath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
@@ -1276,7 +1290,9 @@ void AppController::rebuildHiddenMenus()
         for (const auto &hiddenId : m_config->hiddenDevices()) {
             if (hiddenId.isEmpty() || seen.contains(hiddenId))
                 continue;
-            addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(hiddenId), true, [this, id = hiddenId](bool checked) {
+            const QString hiddenName = m_config->hiddenDeviceName(hiddenId).trimmed();
+            const QString label = hiddenName.isEmpty() ? hiddenId : hiddenName;
+            addCheckItem(m_hiddenDevicesMenu, tr("[disconnected] %1").arg(label), true, [this, id = hiddenId](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh();
                 emit hiddenItemsChanged();
