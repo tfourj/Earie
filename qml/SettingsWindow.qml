@@ -511,6 +511,14 @@ Item {
                                 checked: appController && appController.showInputDevices
                                 onToggled: if (appController) appController.showInputDevices = !appController.showInputDevices
                             }
+                            ToggleRow {
+                                width: parent.width
+                                label: "Show input applications"
+                                description: "Include per-application sliders for input devices."
+                                checked: appController && appController.showInputApplications
+                                enabled: appController && appController.showInputDevices
+                                onToggled: if (appController) appController.showInputApplications = !appController.showInputApplications
+                            }
                         }
 
                         SectionCard {

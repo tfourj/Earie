@@ -30,6 +30,9 @@ public:
     bool showInputDevices() const { return m_showInputDevices; }
     void setShowInputDevices(bool v);
 
+    bool showInputApplications() const { return m_showInputApplications; }
+    void setShowInputApplications(bool v);
+
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
 
@@ -73,6 +76,7 @@ private:
     Mode m_mode = Mode::DefaultDeviceOnly;
     bool m_showSystemSessions = false;
     bool m_showInputDevices = false;
+    bool m_showInputApplications = true;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_debugMode = false;

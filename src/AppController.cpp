@@ -176,6 +176,7 @@ bool AppController::init()
     m_allDevices = (m_config->mode() == ConfigStore::Mode::AllDevices);
     m_showSystemSessions = m_config->showSystemSessions();
     m_showInputDevices = m_config->showInputDevices();
+    m_showInputApplications = m_config->showInputApplications();
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
@@ -584,6 +585,17 @@ void AppController::setShowInputDevices(bool v)
     if (m_audio)
         m_audio->setShowInputDevices(m_showInputDevices);
     emit showInputDevicesChanged();
+}
+
+void AppController::setShowInputApplications(bool v)
+{
+    if (m_showInputApplications == v)
+        return;
+    m_showInputApplications = v;
+    if (m_config)
+        m_config->setShowInputApplications(m_showInputApplications);
+    emit showInputApplicationsChanged();
+    requestRelayout();
 }
 
 void AppController::openAppFolder()

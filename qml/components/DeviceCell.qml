@@ -11,12 +11,13 @@ Item {
     property bool isInput: deviceObject ? deviceObject.isInput : false
     property bool isDefault: deviceObject ? deviceObject.isDefault : false
     property var sessionsModel: deviceObject ? deviceObject.sessionsModel : null
+    property bool showInputApplications: !root.isInput || !appController || appController.showInputApplications
 
     Styles.Theme { id: theme }
 
     width: parent ? parent.width : 380
 
-    implicitHeight: header.height + masterRow.height + sessionsList.implicitHeight + theme.cellPad * 2 + 10
+    implicitHeight: header.height + masterRow.height + (sessionsList.visible ? sessionsList.implicitHeight : 0) + theme.cellPad * 2 + 10
 
     Rectangle {
         anchors.fill: parent
@@ -87,6 +88,7 @@ Item {
 
         Column {
             id: sessionsList
+            visible: root.showInputApplications
             width: parent.width
             spacing: 4
 
