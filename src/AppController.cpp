@@ -883,7 +883,7 @@ void AppController::buildSettingsWindow()
     m_settingsView->installEventFilter(this);
 
     m_settingsView->rootContext()->setContextProperty(QStringLiteral("appController"), this);
-    m_settingsView->rootContext()->setContextProperty(QStringLiteral("appVersion"), QStringLiteral(EARIE_VERSION));
+    m_settingsView->rootContext()->setContextProperty(QStringLiteral("appVersion"), QStringLiteral(EARIE_DISPLAY_VERSION));
     m_settingsView->setSource(QUrl(QStringLiteral("qrc:/qml/SettingsWindow.qml")));
     m_settingsView->setWidth(760);
     m_settingsView->setHeight(660);

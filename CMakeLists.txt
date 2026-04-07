@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Earie VERSION 1.2.1 LANGUAGES CXX)
+project(Earie VERSION 1.3.0 LANGUAGES CXX)
 
 set(TARGET_NAME Earie)
+set(EARIE_BETA "1" CACHE STRING "Beta build label. Use 0 for stable, or N for -betaN.")
+
+if (EARIE_BETA STREQUAL "0")
+    set(EARIE_DISPLAY_VERSION "${PROJECT_VERSION}")
+else()
+    set(EARIE_DISPLAY_VERSION "${PROJECT_VERSION}-beta${EARIE_BETA}")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,6 +67,7 @@ target_compile_definitions(${TARGET_NAME} PRIVATE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
     EARIE_VERSION="${PROJECT_VERSION}"
+    EARIE_DISPLAY_VERSION="${EARIE_DISPLAY_VERSION}"
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE
