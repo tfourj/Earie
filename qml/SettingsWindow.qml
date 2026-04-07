@@ -300,65 +300,68 @@ Item {
                 }
             }
 
-            ToolButton {
-                id: backBtn
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 32
-                padding: 0
-                font.family: theme.iconFont
-                text: "\uE72B"
-                font.pixelSize: 10
+            Row {
+                Layout.alignment: Qt.AlignRight | Qt.AlignTop
+                spacing: 6
 
-                background: Rectangle {
-                    radius: 8
-                    color: backBtn.hovered ? theme.cellHover : "transparent"
-                }
-
-                contentItem: Text {
-                    color: theme.text
+                ToolButton {
+                    id: backBtn
+                    width: 44
+                    height: 32
+                    padding: 0
                     font.family: theme.iconFont
+                    text: "\uE72B"
                     font.pixelSize: 10
-                    text: backBtn.text
-                    verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: Text.AlignLeft
-                    leftPadding: 12
+
+                    background: Rectangle {
+                        radius: 8
+                        color: backBtn.hovered ? theme.cellHover : "transparent"
+                    }
+
+                    contentItem: Text {
+                        color: theme.text
+                        font.family: theme.iconFont
+                        font.pixelSize: 10
+                        text: backBtn.text
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    onClicked: {
+                        if (!appController)
+                            return
+                        appController.hideSettingsWindow()
+                        Qt.callLater(function() {
+                            appController.showFlyout()
+                        })
+                    }
                 }
 
-                onClicked: {
-                    if (!appController)
-                        return
-                    appController.hideSettingsWindow()
-                    Qt.callLater(function() {
-                        appController.showFlyout()
-                    })
-                }
-            }
-
-            ToolButton {
-                id: closeBtn
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 32
-                padding: 0
-                font.family: theme.iconFont
-                text: "\uE711"
-                font.pixelSize: 10
-
-                background: Rectangle {
-                    radius: 8
-                    color: closeBtn.hovered ? "#C42B1C" : "transparent"
-                }
-
-                contentItem: Text {
-                    color: theme.text
+                ToolButton {
+                    id: closeBtn
+                    width: 44
+                    height: 32
+                    padding: 0
                     font.family: theme.iconFont
+                    text: "\uE711"
                     font.pixelSize: 10
-                    text: closeBtn.text
-                    verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: Text.AlignRight
-                    rightPadding: 12
-                }
 
-                onClicked: if (appController) appController.hideSettingsWindow()
+                    background: Rectangle {
+                        radius: 8
+                        color: closeBtn.hovered ? "#C42B1C" : "transparent"
+                    }
+
+                    contentItem: Text {
+                        color: theme.text
+                        font.family: theme.iconFont
+                        font.pixelSize: 10
+                        text: closeBtn.text
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    onClicked: if (appController) appController.hideSettingsWindow()
+                }
             }
         }
 
