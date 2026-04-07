@@ -574,6 +574,7 @@ Item {
                                         id: deviceMouse
                                         anchors.fill: parent
                                         hoverEnabled: true
+                                        preventStealing: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: if (appController) appController.setDeviceHidden(modelData.deviceId, !modelData.hidden)
                                     }
@@ -649,6 +650,7 @@ Item {
                                         id: globalMouse
                                         anchors.fill: parent
                                         hoverEnabled: true
+                                        preventStealing: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: if (appController) appController.setProcessHiddenGlobal(modelData.exePath, !modelData.hidden)
                                     }
@@ -716,17 +718,19 @@ Item {
                                         width: parent.width
                                         height: 38
                                         radius: 12
-                                        color: headerMouse.containsMouse ? theme.cellHover : theme.cellBg
+                                        property bool headerHovered: false
+                                        color: headerHovered ? theme.cellHover : theme.cellBg
                                         border.width: 1
                                         border.color: Qt.rgba(1, 1, 1, 0.05)
 
-                                        MouseArea {
-                                            id: headerMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onPressed: mouse.accepted = true
-                                            onClicked: {
+                                        HoverHandler {
+                                            onHoveredChanged: parent.headerHovered = hovered
+                                        }
+
+                                        TapHandler {
+                                            gesturePolicy: TapHandler.ReleaseWithinBounds
+                                            onTapped: function() {
+                                                settingsScroll.cancelFlick()
                                                 root.setPerDeviceExpanded(deviceId, !expanded)
                                                 if (!expanded) {
                                                     Qt.callLater(function() {
@@ -734,6 +738,12 @@ Item {
                                                     })
                                                 }
                                             }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            acceptedButtons: Qt.NoButton
+                                            cursorShape: Qt.PointingHandCursor
                                         }
 
                                         Row {
@@ -786,6 +796,7 @@ Item {
                                                     id: processMouse
                                                     anchors.fill: parent
                                                     hoverEnabled: true
+                                                    preventStealing: true
                                                     cursorShape: Qt.PointingHandCursor
                                                     onClicked: if (appController) appController.setProcessHiddenForDevice(deviceId, modelData.exePath, !modelData.hidden)
                                                 }
