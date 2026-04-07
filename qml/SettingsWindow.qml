@@ -292,19 +292,13 @@ Item {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 0
 
                 Text {
                     color: theme.text
                     font.pixelSize: 22
                     font.bold: true
                     text: "Settings"
-                }
-
-                Text {
-                    color: theme.textMuted
-                    font.pixelSize: 12
-                    text: "Everything app-owned in one place."
                 }
             }
 
@@ -919,7 +913,7 @@ Item {
                                 color: theme.textMuted
                                 font.pixelSize: 12
                                 wrapMode: Text.WordWrap
-                                text: "Made by tfourj. This settings window replaces the old popup settings, hidden-items window, and native About dialog."
+                                text: "Made by tfourj\nWritten in C++ with Qt."
                             }
                         }
                     }
