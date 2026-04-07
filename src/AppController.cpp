@@ -841,13 +841,13 @@ void AppController::buildFlyout()
                 if (!m_view || !m_view->isVisible())
                     return;
                 adjustFlyoutHeightToContent();
-                positionFlyout();
+                positionFlyout(false);
             });
             QTimer::singleShot(80, this, [this]() {
                 if (!m_view || !m_view->isVisible())
                     return;
                 adjustFlyoutHeightToContent();
-                positionFlyout();
+                positionFlyout(false);
             });
         };
         connect(model, &QAbstractItemModel::rowsInserted, this, relayout);
@@ -1233,7 +1233,9 @@ void AppController::positionFlyout(bool preferTrayAnchor)
         x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
         y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
 
-        m_view->setPosition(QPoint(x, y));
+        const QPoint target(x, y);
+        if (m_view->position() != target)
+            m_view->setPosition(target);
     };
 
     if (preferTrayAnchor) {
@@ -1255,7 +1257,9 @@ void AppController::positionFlyout(bool preferTrayAnchor)
             x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
             y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
 
-            m_view->setPosition(QPoint(x, y));
+            const QPoint target(x, y);
+            if (m_view->position() != target)
+                m_view->setPosition(target);
             return;
         }
     }
