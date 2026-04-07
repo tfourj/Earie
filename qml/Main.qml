@@ -19,15 +19,6 @@ Item {
         + scrollArea.contentHeight
         + 4
     )
-    property bool trayIconExpanded: false
-
-    function reopenSettingsMenu() {
-        Qt.callLater(function() {
-            if (settingsMenu)
-                settingsMenu.open()
-        })
-    }
-
     onContentHeightHintChanged: {
         if (appController) appController.requestRelayout()
     }
@@ -181,8 +172,6 @@ Item {
     Connections {
         target: appController
         function onCloseAllPopupsRequested() {
-            if (settingsMenu) settingsMenu.close()
-            if (hiddenMenu) hiddenMenu.close()
         }
     }
 
@@ -233,7 +222,6 @@ Item {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
                 padding: 0
-                property bool wasOpenOnPress: false
                 font.family: theme.iconFont
                 font.pixelSize: 14
                 text: theme.glyphSettings
@@ -243,153 +231,7 @@ Item {
                     color: settingsBtn.hovered ? theme.cellHover : "transparent"
                 }
 
-                onPressed: wasOpenOnPress = settingsMenu.visible
-                onClicked: {
-                    if (wasOpenOnPress) {
-                        wasOpenOnPress = false
-                        settingsMenu.close()
-                        return
-                    }
-                    settingsMenu.open()
-                }
-
-                StyledMenu {
-                    id: settingsMenu
-                    y: settingsBtn.height
-
-                    StyledMenuItem {
-                        text: (appController && appController.debugMode ? "✓ " : "") + "Debug mode"
-                        onTriggered: {
-                            if (appController) appController.debugMode = !appController.debugMode
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.startWithWindows ? "✓ " : "") + "Start with Windows"
-                        onTriggered: {
-                            if (appController) appController.startWithWindows = !appController.startWithWindows
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        id: trayIconItem
-                        text: (root.trayIconExpanded ? "▼ " : "► ") + "Tray icon options"
-                        onTriggered: {
-                            root.trayIconExpanded = !root.trayIconExpanded
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
-                        onTriggered: {
-                            if (appController) appController.useNativeTrayIcon = true
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
-                        onTriggered: {
-                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
-                        onTriggered: {
-                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: "Open config folder"
-                        onTriggered: if (appController) appController.openConfigFolder()
-                    }
-                    StyledMenuItem {
-                        text: "Open application folder"
-                        onTriggered: if (appController) appController.openAppFolder()
-                    }
-                    MenuSeparator { }
-                    StyledMenuItem {
-                        text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
-                        onTriggered: {
-                            if (appController) appController.showSystemSessions = !appController.showSystemSessions
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.showInputDevices ? "✓ " : "") + "Show input devices"
-                        onTriggered: {
-                            if (appController) appController.showInputDevices = !appController.showInputDevices
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
-                        onTriggered: {
-                            if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.scrollWheelVolumeOnHover ? "✓ " : "") + "Scroll wheel changes volume on hover (2%)"
-                        onTriggered: {
-                            if (appController) appController.scrollWheelVolumeOnHover = !appController.scrollWheelVolumeOnHover
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                }
-            }
-
-            ToolButton {
-                id: hiddenBtn
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                padding: 0
-                property bool wasOpenOnPress: false
-                font.family: theme.iconFont
-                font.pixelSize: 14
-                text: theme.glyphEye
-
-                background: Rectangle {
-                    radius: 8
-                    color: hiddenBtn.hovered ? theme.cellHover : "transparent"
-                }
-
-                onPressed: wasOpenOnPress = hiddenMenu.visible
-                onClicked: {
-                    if (wasOpenOnPress) {
-                        wasOpenOnPress = false
-                        hiddenMenu.close()
-                        return
-                    }
-                    hiddenMenu.open()
-                }
-
-                StyledMenu {
-                    id: hiddenMenu
-                    y: hiddenBtn.height
-
-                    StyledMenuItem {
-                        text: "Hidden devices..."
-                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("devices")
-                    }
-                    StyledMenuItem {
-                        text: "Hidden processes..."
-                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("processes")
-                    }
-                }
+                onClicked: if (appController) appController.showSettingsWindow()
             }
 
             ToolButton {
