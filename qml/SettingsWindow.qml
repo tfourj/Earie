@@ -227,6 +227,7 @@ Item {
             }
 
             Switch {
+                enabled: toggleRow.enabled
                 checked: toggleRow.checked
                 onToggled: toggleRow.toggled()
             }
@@ -536,12 +537,12 @@ Item {
                                 onToggled: if (appController) appController.showInputDevices = !appController.showInputDevices
                             }
                             ToggleRow {
+                                visible: appController && appController.showInputDevices
                                 x: 18
                                 width: parent.width - 18
                                 label: "Show input applications"
                                 description: "Include per-application sliders for input devices."
                                 checked: appController && appController.showInputApplications
-                                enabled: appController && appController.showInputDevices
                                 indentLevel: 1
                                 onToggled: if (appController) appController.showInputApplications = !appController.showInputApplications
                             }
