@@ -160,6 +160,8 @@ Item {
         required property string label
         required property string description
         required property bool checked
+        property int indentLevel: 0
+        readonly property int indentPx: indentLevel * 18
         signal toggled()
 
         radius: 12
@@ -167,19 +169,41 @@ Item {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.05)
         implicitHeight: 66
+        implicitWidth: rowLayout.implicitWidth + 24
+        opacity: enabled ? 1.0 : 0.6
 
         MouseArea {
             id: toggleMouse
             anchors.fill: parent
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: parent.toggled()
+            enabled: toggleRow.enabled
+            cursorShape: toggleRow.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (toggleRow.enabled) parent.toggled()
         }
 
         RowLayout {
+            id: rowLayout
             anchors.fill: parent
             anchors.margins: 12
             spacing: 12
+
+            Item {
+                id: indentSpacer
+                Layout.preferredWidth: toggleRow.indentLevel * 18
+                Layout.fillHeight: true
+                visible: width > 0
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 8
+                    width: 1
+                    radius: 1
+                    color: Qt.rgba(1, 1, 1, 0.08)
+                    visible: parent.visible
+                }
+            }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -504,7 +528,7 @@ Item {
                                 checked: appController && appController.showSystemSessions
                                 onToggled: if (appController) appController.showSystemSessions = !appController.showSystemSessions
                             }
-                            ToggleRow {
+            ToggleRow {
                                 width: parent.width
                                 label: "Show input devices"
                                 description: "Include microphones and other capture endpoints in the mixer."
@@ -512,11 +536,13 @@ Item {
                                 onToggled: if (appController) appController.showInputDevices = !appController.showInputDevices
                             }
                             ToggleRow {
-                                width: parent.width
+                                x: 18
+                                width: parent.width - 18
                                 label: "Show input applications"
                                 description: "Include per-application sliders for input devices."
                                 checked: appController && appController.showInputApplications
                                 enabled: appController && appController.showInputDevices
+                                indentLevel: 1
                                 onToggled: if (appController) appController.showInputApplications = !appController.showInputApplications
                             }
                         }
