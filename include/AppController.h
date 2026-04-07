@@ -64,11 +64,15 @@ public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
+    Q_INVOKABLE void showSettingsWindow();
+    Q_INVOKABLE void showSettingsWindowSection(const QString &section);
+    Q_INVOKABLE void hideSettingsWindow();
     Q_INVOKABLE void showHiddenItemsWindow();
     Q_INVOKABLE void showHiddenItemsWindowSection(const QString &section);
     Q_INVOKABLE void hideHiddenItemsWindow();
     // Called by QML when content height changes (e.g. sessions hidden/unhidden).
     Q_INVOKABLE void requestRelayout();
+    Q_INVOKABLE void requestSettingsRelayout();
     Q_INVOKABLE void requestHiddenItemsRelayout();
     Q_INVOKABLE void setDeviceHidden(const QString &deviceId, bool hidden);
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
@@ -103,10 +107,13 @@ private slots:
 private:
     void buildTray();
     void buildFlyout();
+    void buildSettingsWindow();
     void buildHiddenItemsWindow();
     void positionFlyout();
+    void positionSettingsWindow(bool recomputeAnchor);
     void positionHiddenItemsWindow(bool recomputeAnchor);
     void adjustFlyoutHeightToContent();
+    void adjustSettingsHeightToContent();
     void adjustHiddenItemsHeightToContent();
     void applyStartWithWindows(bool v);
     void applyWindowEffectsIfPossible(QQuickView *view);
@@ -120,14 +127,19 @@ private:
     QPointer<QMenu> m_hiddenProcessesMenu;
 
     QAction *m_actionOpen = nullptr;
+    QAction *m_actionSettings = nullptr;
     QAction *m_actionQuit = nullptr;
     QAction *m_actionDefaultOnly = nullptr;
     QAction *m_actionAllDevices = nullptr;
     QAction *m_actionStartWithWindows = nullptr;
 
     QPointer<QQuickView> m_view;
+    QPointer<QQuickView> m_settingsView;
     QPointer<QQuickView> m_hiddenView;
 
+    QPoint m_settingsAnchorPos;
+    QRect m_settingsAnchorWork;
+    bool m_settingsAnchorValid = false;
     QPoint m_hiddenAnchorPos;
     QRect m_hiddenAnchorWork;
     bool m_hiddenAnchorValid = false;
