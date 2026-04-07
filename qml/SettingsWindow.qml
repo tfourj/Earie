@@ -55,6 +55,14 @@ Item {
         currentTab = tab
     }
 
+    function logDebug(message) {
+        if (appController && appController.debugLog) {
+            appController.debugLog("SettingsWindow: " + message)
+        } else {
+            console.log("SettingsWindow: " + message)
+        }
+    }
+
     function ensureItemVisible(item, padding) {
         if (!item || !settingsScroll)
             return
