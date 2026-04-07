@@ -24,6 +24,7 @@
 - Hide processes
 - Sort devices
 - Show only the default device
+- Optionally manage input devices
 
 ## Download
 
@@ -56,6 +57,7 @@ Schema (v1):
   "schemaVersion": 1,
   "mode": "default",                // "default" | "all"
   "showSystemSessions": false,      // default false
+  "showInputDevices": false,        // default false
   "hiddenDevices": ["<deviceId>"],
   "hiddenProcessesGlobal": ["C:\\Path\\App.exe"],
   "hiddenProcessesPerDevice": {
