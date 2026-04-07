@@ -5,7 +5,6 @@
 #include "IconCache.h"
 #include "ConfigStore.h"
 #include "WinAcrylic.h"
-#include "WinTrayPositioner.h"
 
 #include <QAction>
 #include <QEvent>
@@ -149,7 +148,7 @@ AppController::AppController(QObject *parent)
         if (!m_view || !m_view->isVisible())
             return;
         adjustFlyoutHeightToContent();
-        positionFlyout();
+        positionFlyout(false);
     });
 }
 
@@ -650,7 +649,7 @@ void AppController::requestRelayout()
         if (!m_view || !m_view->isVisible())
             return;
         adjustFlyoutHeightToContent();
-        positionFlyout();
+        positionFlyout(false);
     });
 }
 
@@ -1218,38 +1217,59 @@ void AppController::updateTrayIcon()
         m_trayIconCoalesce.start();
 }
 
-void AppController::positionFlyout()
+void AppController::positionFlyout(bool preferTrayAnchor)
 {
     if (!m_view)
         return;
 
-    // Prefer tray geometry when available.
-    QRect trayGeom = m_tray.geometry();
     const int w = m_view->width();
     const int h = m_view->height();
+    const int margin = 12;
 
-    if (trayGeom.isValid()) {
-        QScreen *screen = QGuiApplication::screenAt(trayGeom.center());
-        QRect work = screen ? screen->availableGeometry() : QGuiApplication::primaryScreen()->availableGeometry();
-        const int margin = 12;
-
-        // User request: keep flyout snapped to the right edge of the screen.
+    auto positionFromWorkArea = [this, w, h, margin](const QRect &work) {
         int x = work.right() - w - margin;
-        int y = trayGeom.top() - h - margin;
+        int y = work.bottom() - h - margin;
 
-        // If not enough above, go below.
-        if (y < work.top() + margin)
-            y = trayGeom.bottom() + margin;
-
-        // Clamp.
         x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
         y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
 
         m_view->setPosition(QPoint(x, y));
-        return;
+    };
+
+    if (preferTrayAnchor) {
+        // Prefer tray geometry when available during the initial open.
+        const QRect trayGeom = m_tray.geometry();
+        if (trayGeom.isValid()) {
+            QScreen *screen = QGuiApplication::screenAt(trayGeom.center());
+            QRect work = screen ? screen->availableGeometry() : QGuiApplication::primaryScreen()->availableGeometry();
+
+            // User request: keep flyout snapped to the right edge of the screen.
+            int x = work.right() - w - margin;
+            int y = trayGeom.top() - h - margin;
+
+            // If not enough above, go below.
+            if (y < work.top() + margin)
+                y = trayGeom.bottom() + margin;
+
+            // Clamp.
+            x = qMax(work.left() + margin, qMin(x, work.right() - w - margin));
+            y = qMax(work.top() + margin, qMin(y, work.bottom() - h - margin));
+
+            m_view->setPosition(QPoint(x, y));
+            return;
+        }
     }
 
-    m_view->setPosition(WinTrayPositioner::suggestFlyoutTopLeft(w, h));
+    QScreen *screen = nullptr;
+    if (m_view->isVisible())
+        screen = QGuiApplication::screenAt(m_view->geometry().center());
+    if (!screen)
+        screen = QGuiApplication::screenAt(QCursor::pos());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+
+    const QRect work = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+    positionFromWorkArea(work);
 }
 
 void AppController::positionHiddenItemsWindow(bool recomputeAnchor)

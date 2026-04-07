@@ -109,7 +109,7 @@ private:
     void buildFlyout();
     void buildSettingsWindow();
     void buildHiddenItemsWindow();
-    void positionFlyout();
+    void positionFlyout(bool preferTrayAnchor = true);
     void positionSettingsWindow(bool recomputeAnchor);
     void positionHiddenItemsWindow(bool recomputeAnchor);
     void adjustFlyoutHeightToContent();
