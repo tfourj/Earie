@@ -742,8 +742,10 @@ void AppController::showSettingsWindowSection(const QString &section)
     QString tab = QStringLiteral("general");
     if (key == QLatin1String("devices"))
         tab = QStringLiteral("devices");
-    else if (key == QLatin1String("hidden") || key == QLatin1String("processes"))
-        tab = QStringLiteral("hidden");
+    else if (key == QLatin1String("hidden") || key == QLatin1String("hiddendevices"))
+        tab = QStringLiteral("hiddenDevices");
+    else if (key == QLatin1String("processes") || key == QLatin1String("hiddenprocesses"))
+        tab = QStringLiteral("hiddenProcesses");
     else if (key == QLatin1String("about"))
         tab = QStringLiteral("about");
 
@@ -760,13 +762,16 @@ void AppController::hideSettingsWindow()
 
 void AppController::showHiddenItemsWindow()
 {
-    showSettingsWindowSection(QStringLiteral("hidden"));
+    showSettingsWindowSection(QStringLiteral("hiddenDevices"));
 }
 
 void AppController::showHiddenItemsWindowSection(const QString &section)
 {
-    Q_UNUSED(section);
-    showSettingsWindowSection(QStringLiteral("hidden"));
+    const QString key = section.trimmed().toLower();
+    if (key == QLatin1String("processes"))
+        showSettingsWindowSection(QStringLiteral("hiddenProcesses"));
+    else
+        showSettingsWindowSection(QStringLiteral("hiddenDevices"));
 }
 
 void AppController::requestHiddenItemsRelayout()

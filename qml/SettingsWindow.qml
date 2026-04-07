@@ -386,7 +386,8 @@ Item {
 
                     NavButton { width: parent.width; tabKey: "general"; label: "General" }
                     NavButton { width: parent.width; tabKey: "devices"; label: "Devices" }
-                    NavButton { width: parent.width; tabKey: "hidden"; label: "Hidden" }
+                    NavButton { width: parent.width; tabKey: "hiddenDevices"; label: "Hidden devices" }
+                    NavButton { width: parent.width; tabKey: "hiddenProcesses"; label: "Hidden processes" }
                     NavButton { width: parent.width; tabKey: "about"; label: "About" }
                 }
             }
@@ -539,12 +540,12 @@ Item {
                     }
 
                     Column {
-                        visible: root.currentTab === "hidden"
+                        visible: root.currentTab === "hiddenDevices"
                         width: parent.width
                         spacing: 14
 
-                        SectionHeading { text: "Hidden" }
-                        SectionBody { width: parent.width; text: "Manage hidden devices and process rules without leaving settings." }
+                        SectionHeading { text: "Hidden Devices" }
+                        SectionBody { width: parent.width; text: "Manage hidden devices without leaving settings." }
 
                         SectionCard {
                             Text {
@@ -615,6 +616,15 @@ Item {
                                 }
                             }
                         }
+                    }
+
+                    Column {
+                        visible: root.currentTab === "hiddenProcesses"
+                        width: parent.width
+                        spacing: 14
+
+                        SectionHeading { text: "Hidden Processes" }
+                        SectionBody { width: parent.width; text: "Manage global and per-device process rules in one place." }
 
                         SectionCard {
                             Text {
@@ -718,32 +728,25 @@ Item {
                                         width: parent.width
                                         height: 38
                                         radius: 12
-                                        property bool headerHovered: false
-                                        color: headerHovered ? theme.cellHover : theme.cellBg
+                                        color: headerMouse.containsMouse ? theme.cellHover : theme.cellBg
                                         border.width: 1
                                         border.color: Qt.rgba(1, 1, 1, 0.05)
 
-                                        HoverHandler {
-                                            onHoveredChanged: parent.headerHovered = hovered
-                                        }
-
-                                        TapHandler {
-                                            gesturePolicy: TapHandler.ReleaseWithinBounds
-                                            onTapped: function() {
-                                                settingsScroll.cancelFlick()
+                                        MouseArea {
+                                            id: headerMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                root.logDebug("header clicked device=" + deviceId + " expandedBefore=" + expanded + " y=" + settingsScroll.contentY.toFixed(1))
                                                 root.setPerDeviceExpanded(deviceId, !expanded)
+                                                root.logDebug("header toggled device=" + deviceId + " expandedAfter=" + (!expanded))
                                                 if (!expanded) {
                                                     Qt.callLater(function() {
                                                         root.ensureItemVisible(perDeviceSection, 18)
                                                     })
                                                 }
                                             }
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            acceptedButtons: Qt.NoButton
-                                            cursorShape: Qt.PointingHandCursor
                                         }
 
                                         Row {
