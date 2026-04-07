@@ -282,15 +282,16 @@ Item {
 
             ToolButton {
                 id: closeBtn
-                Layout.preferredWidth: 32
+                Layout.preferredWidth: 44
                 Layout.preferredHeight: 32
                 padding: 0
-                text: "X"
-                font.pixelSize: 12
+                font.family: theme.iconFont
+                text: "\uE711"
+                font.pixelSize: 10
 
                 background: Rectangle {
-                    radius: 10
-                    color: closeBtn.hovered ? theme.cellHover : "transparent"
+                    radius: 8
+                    color: closeBtn.hovered ? "#C42B1C" : "transparent"
                 }
 
                 onClicked: if (appController) appController.hideSettingsWindow()
@@ -584,14 +585,38 @@ Item {
                                         onClicked: if (appController) appController.setProcessHiddenGlobal(modelData.exePath, !modelData.hidden)
                                     }
 
-                                    Text {
+                                    Row {
                                         anchors.fill: parent
                                         anchors.margins: 12
-                                        verticalAlignment: Text.AlignVCenter
-                                        color: theme.text
-                                        font.pixelSize: 12
-                                        elide: Text.ElideRight
-                                        text: (modelData.hidden ? "✓ " : "") + modelData.name
+                                        spacing: 10
+
+                                        Rectangle {
+                                            width: 14
+                                            height: 14
+                                            radius: 3
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            border.width: 1
+                                            border.color: modelData.hidden ? Qt.rgba(0.23, 0.59, 1.0, 0.95) : Qt.rgba(1, 1, 1, 0.22)
+                                            color: modelData.hidden ? Qt.rgba(0.23, 0.59, 1.0, 0.75) : "transparent"
+
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: 6
+                                                height: 6
+                                                radius: 1
+                                                color: "white"
+                                                visible: modelData.hidden
+                                            }
+                                        }
+
+                                        Text {
+                                            width: parent.width - 32
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            color: theme.text
+                                            font.pixelSize: 12
+                                            elide: Text.ElideRight
+                                            text: modelData.name
+                                        }
                                     }
                                 }
                             }
@@ -688,14 +713,38 @@ Item {
                                                     onClicked: if (appController) appController.setProcessHiddenForDevice(deviceId, modelData.exePath, !modelData.hidden)
                                                 }
 
-                                                Text {
+                                                Row {
                                                     anchors.fill: parent
                                                     anchors.margins: 12
-                                                    verticalAlignment: Text.AlignVCenter
-                                                    color: theme.text
-                                                    font.pixelSize: 12
-                                                    elide: Text.ElideRight
-                                                    text: (modelData.hidden ? "✓ " : "") + modelData.name
+                                                    spacing: 10
+
+                                                    Rectangle {
+                                                        width: 14
+                                                        height: 14
+                                                        radius: 3
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        border.width: 1
+                                                        border.color: modelData.hidden ? Qt.rgba(0.23, 0.59, 1.0, 0.95) : Qt.rgba(1, 1, 1, 0.22)
+                                                        color: modelData.hidden ? Qt.rgba(0.23, 0.59, 1.0, 0.75) : "transparent"
+
+                                                        Rectangle {
+                                                            anchors.centerIn: parent
+                                                            width: 6
+                                                            height: 6
+                                                            radius: 1
+                                                            color: "white"
+                                                            visible: modelData.hidden
+                                                        }
+                                                    }
+
+                                                    Text {
+                                                        width: parent.width - 32
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        color: theme.text
+                                                        font.pixelSize: 12
+                                                        elide: Text.ElideRight
+                                                        text: modelData.name
+                                                    }
                                                 }
                                             }
                                         }
