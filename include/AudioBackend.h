@@ -1,8 +1,11 @@
 #pragma once
 
+#include "AudioWorker.h"
+
 #include <QObject>
 #include <QHash>
 #include <QPointer>
+#include <QSortFilterProxyModel>
 #include <QThread>
 #include <QVector>
 
@@ -11,6 +14,7 @@ class DeviceListModel;
 class AudioDevice;
 class AudioSession;
 class IconCache;
+class QAbstractItemModel;
 class UpdateCoalescer;
 class AudioWorker;
 struct DeviceState;
@@ -23,6 +27,7 @@ public:
     struct DeviceSnapshot {
         QString id;
         QString name;
+        DeviceDirection direction = DeviceDirection::Output;
     };
     struct ProcessSnapshot {
         QString exePath;
@@ -35,11 +40,14 @@ public:
     void setConfig(ConfigStore *cfg);
     void setAllDevices(bool all);
     void setShowSystemSessions(bool show);
+    void setShowInputDevices(bool show);
 
     void start();
     void refresh();
 
     DeviceListModel *deviceModel() const { return m_deviceModel; }
+    QAbstractItemModel *outputDeviceModel() const { return m_outputDeviceModel; }
+    QAbstractItemModel *inputDeviceModel() const { return m_inputDeviceModel; }
     IconCache *iconCache() const { return m_iconCache; }
 
     bool hasDefaultDevice() const { return m_hasDefaultDevice; }
@@ -64,6 +72,7 @@ public:
 public slots:
     Q_INVOKABLE void moveDeviceBefore(const QString &movingDeviceId, const QString &beforeDeviceId);
     Q_INVOKABLE void moveDeviceToIndex(const QString &movingDeviceId, int toIndex);
+    Q_INVOKABLE void moveDeviceToIndexInDirection(const QString &movingDeviceId, bool isInput, int toIndex);
 
 signals:
     void devicesChanged();
@@ -78,8 +87,11 @@ private:
     QPointer<ConfigStore> m_config;
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
 
     DeviceListModel *m_deviceModel = nullptr;
+    QSortFilterProxyModel *m_outputDeviceModel = nullptr;
+    QSortFilterProxyModel *m_inputDeviceModel = nullptr;
     IconCache *m_iconCache = nullptr;
     UpdateCoalescer *m_coalescer = nullptr;
 

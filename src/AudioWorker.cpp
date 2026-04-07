@@ -480,6 +480,14 @@ void AudioWorker::setShowSystemSessions(bool show)
     scheduleSnapshot();
 }
 
+void AudioWorker::setShowInputDevices(bool show)
+{
+    if (m_destroying.load())
+        return;
+    m_showInputDevices = show;
+    scheduleSnapshot();
+}
+
 void AudioWorker::setDeviceVolume(const QString &deviceId, double volume01)
 {
     if (m_destroying.load() || !m)
@@ -540,29 +548,9 @@ void AudioWorker::emitSnapshotNow()
     if (m_destroying.load() || !m || !m->enumerator)
         return;
 
-    // Refresh device list.
-    ComPtr<IMMDeviceCollection> coll;
-    HRESULT hr = m->enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, coll.put());
-    if (FAILED(hr)) {
-        emit error(QStringLiteral("EnumAudioEndpoints failed: %1").arg(hrToString(hr)));
-        return;
-    }
-
-    UINT count = 0;
-    coll->GetCount(&count);
-
-    // Determine default device id.
-    QString defaultId;
-    {
-        ComPtr<IMMDevice> def;
-        if (SUCCEEDED(m->enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, def.put()))) {
-            defaultId = deviceId(def.get());
-        }
-    }
-
     // Build snapshot.
     QVector<DeviceState> devices;
-    devices.reserve(static_cast<int>(count));
+    devices.reserve(16);
 
     // Rebuild COM caches each snapshot, but unregister previous callbacks to avoid dangling notifications.
     {
@@ -595,167 +583,175 @@ void AudioWorker::emitSnapshotNow()
 
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
 
-    for (UINT i = 0; i < count; ++i) {
-        // Check periodically during long-running operation
-        if (m_destroying.load() || !m)
+    auto appendEndpoints = [this, nowMs, &devices](EDataFlow flow, DeviceDirection direction) {
+        ComPtr<IMMDeviceCollection> coll;
+        HRESULT hr = m->enumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, coll.put());
+        if (FAILED(hr)) {
+            emit error(QStringLiteral("EnumAudioEndpoints failed: %1").arg(hrToString(hr)));
             return;
-            
-        ComPtr<IMMDevice> dev;
-        if (FAILED(coll->Item(i, dev.put())) || !dev)
-            continue;
-
-        const QString id = deviceId(dev.get());
-        if (id.isEmpty())
-            continue;
-
-        DeviceState ds;
-        ds.id = id;
-        ds.name = deviceFriendlyName(dev.get());
-        ds.isDefault = (id == defaultId);
-
-        Impl::DeviceCom dc;
-        dc.device.attach(dev.detach());
-
-        // Endpoint volume.
-        {
-            ComPtr<IAudioEndpointVolume> ep;
-            hr = dc.device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(ep.put()));
-            if (SUCCEEDED(hr) && ep) {
-                float vol = 1.0f;
-                BOOL mute = FALSE;
-                ep->GetMasterVolumeLevelScalar(&vol);
-                ep->GetMute(&mute);
-                ds.volume = vol;
-                ds.muted = (mute == TRUE);
-                // Only register callback if not destroying
-                if (!m_destroying.load() && m && m->endpointCb) {
-                    ep->RegisterControlChangeNotify(m->endpointCb.get());
-                }
-                dc.endpoint.attach(ep.detach());
-            }
         }
 
-        // Session manager + sessions.
+        UINT count = 0;
+        coll->GetCount(&count);
+
+        QString defaultId;
         {
-            ComPtr<IAudioSessionManager2> mgr;
-            hr = dc.device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(mgr.put()));
-            if (SUCCEEDED(hr) && mgr) {
-                // Only register callback if not destroying
-                if (!m_destroying.load() && m && m->sessionCb) {
-                    mgr->RegisterSessionNotification(m->sessionCb.get());
+            ComPtr<IMMDevice> def;
+            if (SUCCEEDED(m->enumerator->GetDefaultAudioEndpoint(flow, eMultimedia, def.put())))
+                defaultId = deviceId(def.get());
+        }
+
+        devices.reserve(devices.size() + static_cast<int>(count));
+
+        for (UINT i = 0; i < count; ++i) {
+            if (m_destroying.load() || !m)
+                return;
+
+            ComPtr<IMMDevice> dev;
+            if (FAILED(coll->Item(i, dev.put())) || !dev)
+                continue;
+
+            const QString id = deviceId(dev.get());
+            if (id.isEmpty())
+                continue;
+
+            DeviceState ds;
+            ds.id = id;
+            ds.name = deviceFriendlyName(dev.get());
+            ds.direction = direction;
+            ds.isDefault = (id == defaultId);
+
+            Impl::DeviceCom dc;
+            dc.device.attach(dev.detach());
+
+            {
+                ComPtr<IAudioEndpointVolume> ep;
+                hr = dc.device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(ep.put()));
+                if (SUCCEEDED(hr) && ep) {
+                    float vol = 1.0f;
+                    BOOL mute = FALSE;
+                    ep->GetMasterVolumeLevelScalar(&vol);
+                    ep->GetMute(&mute);
+                    ds.volume = vol;
+                    ds.muted = (mute == TRUE);
+                    if (!m_destroying.load() && m && m->endpointCb)
+                        ep->RegisterControlChangeNotify(m->endpointCb.get());
+                    dc.endpoint.attach(ep.detach());
                 }
-                dc.sessionMgr.attach(mgr.detach());
+            }
 
-                ComPtr<IAudioSessionEnumerator> se;
-                if (SUCCEEDED(dc.sessionMgr->GetSessionEnumerator(se.put())) && se) {
-                    int scount = 0;
-                    se->GetCount(&scount);
-                    for (int si = 0; si < scount; ++si) {
-                        ComPtr<IAudioSessionControl> ctrl;
-                        if (FAILED(se->GetSession(si, ctrl.put())) || !ctrl)
-                            continue;
+            {
+                ComPtr<IAudioSessionManager2> mgr;
+                hr = dc.device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(mgr.put()));
+                if (SUCCEEDED(hr) && mgr) {
+                    if (!m_destroying.load() && m && m->sessionCb)
+                        mgr->RegisterSessionNotification(m->sessionCb.get());
+                    dc.sessionMgr.attach(mgr.detach());
 
-                        ComPtr<IAudioSessionControl2> ctrl2;
-                        if (FAILED(ctrl->QueryInterface(__uuidof(IAudioSessionControl2), reinterpret_cast<void **>(ctrl2.put()))) || !ctrl2)
-                            continue;
+                    ComPtr<IAudioSessionEnumerator> se;
+                    if (SUCCEEDED(dc.sessionMgr->GetSessionEnumerator(se.put())) && se) {
+                        int scount = 0;
+                        se->GetCount(&scount);
+                        for (int si = 0; si < scount; ++si) {
+                            ComPtr<IAudioSessionControl> ctrl;
+                            if (FAILED(se->GetSession(si, ctrl.put())) || !ctrl)
+                                continue;
 
-                        DWORD pid = 0;
-                        ctrl2->GetProcessId(&pid);
-                        if (pid == 0)
-                            continue;
+                            ComPtr<IAudioSessionControl2> ctrl2;
+                            if (FAILED(ctrl->QueryInterface(__uuidof(IAudioSessionControl2), reinterpret_cast<void **>(ctrl2.put()))) || !ctrl2)
+                                continue;
 
-                        const QString exe = exePathForPid(pid);
-                        if (!m_showSystemSessions && isLikelySystemSession(exe))
-                            continue;
+                            DWORD pid = 0;
+                            ctrl2->GetProcessId(&pid);
+                            if (pid == 0)
+                                continue;
 
-                        // Volume/mute.
-                        ComPtr<ISimpleAudioVolume> simple;
-                        if (FAILED(ctrl->QueryInterface(__uuidof(ISimpleAudioVolume), reinterpret_cast<void **>(simple.put()))) || !simple)
-                            continue;
+                            const QString exe = exePathForPid(pid);
+                            if (!m_showSystemSessions && isLikelySystemSession(exe))
+                                continue;
 
-                        float sVol = 1.0f;
-                        BOOL sMute = FALSE;
-                        simple->GetMasterVolume(&sVol);
-                        simple->GetMute(&sMute);
+                            ComPtr<ISimpleAudioVolume> simple;
+                            if (FAILED(ctrl->QueryInterface(__uuidof(ISimpleAudioVolume), reinterpret_cast<void **>(simple.put()))) || !simple)
+                                continue;
 
-                        // Display name.
-                        LPWSTR dname = nullptr;
-                        QString display;
-                        if (SUCCEEDED(ctrl->GetDisplayName(&dname)) && dname) {
-                            display = QString::fromWCharArray(dname).trimmed();
-                            CoTaskMemFree(dname);
-                        }
-                        if (display.isEmpty())
-                            display = QFileInfo(exe).baseName();
+                            float sVol = 1.0f;
+                            BOOL sMute = FALSE;
+                            simple->GetMasterVolume(&sVol);
+                            simple->GetMute(&sMute);
 
-                        // State.
-                        AudioSessionState st = AudioSessionStateInactive;
-                        ctrl->GetState(&st);
-
-                        const QString keyStr = id + QLatin1Char('|') + QString::number(pid) + QLatin1Char('|') + exe;
-                        qint64 lastActive = m->lastActiveByKeyStr.value(keyStr, 0);
-                        if (st == AudioSessionStateActive) {
-                            lastActive = nowMs;
-                            m->lastActiveByKeyStr.insert(keyStr, lastActive);
-                        }
-
-                        SessionState ss;
-                        ss.deviceId = id;
-                        ss.pid = static_cast<quint32>(pid);
-                        ss.exePath = exe;
-                        ss.displayName = display;
-                        ss.iconKey = exe;
-                        ss.volume = sVol;
-                        ss.muted = (sMute == TRUE);
-                        ss.active = (st == AudioSessionStateActive);
-                        ss.lastActiveMs = lastActive;
-
-                        // Keep COM refs for control.
-                        Impl::SessionKey key{id, static_cast<quint32>(pid), exe};
-                        Impl::SessionCom sc;
-                        sc.ctrl.attach(ctrl.detach());
-                        sc.ctrl2.attach(ctrl2.detach());
-                        sc.simple.attach(simple.detach());
-
-                        // Peak meter (may be unavailable for some sessions).
-                        if (sc.ctrl) {
-                            ComPtr<IAudioMeterInformation> meter;
-                            if (SUCCEEDED(sc.ctrl->QueryInterface(IID_IAudioMeterInformation, reinterpret_cast<void **>(meter.put()))) && meter) {
-                                sc.meter.attach(meter.detach());
+                            LPWSTR dname = nullptr;
+                            QString display;
+                            if (SUCCEEDED(ctrl->GetDisplayName(&dname)) && dname) {
+                                display = QString::fromWCharArray(dname).trimmed();
+                                CoTaskMemFree(dname);
                             }
-                        }
+                            if (display.isEmpty())
+                                display = QFileInfo(exe).baseName();
 
-                        sc.lastActiveMs = lastActive;
-                        sc.state = st;
-                        // Only register session events if not destroying
-                        if (!m_destroying.load() && m) {
-                            auto *events = new Impl::SessionEvents(this, key);
+                            AudioSessionState st = AudioSessionStateInactive;
+                            ctrl->GetState(&st);
+
+                            const QString keyStr = id + QLatin1Char('|') + QString::number(pid) + QLatin1Char('|') + exe;
+                            qint64 lastActive = m->lastActiveByKeyStr.value(keyStr, 0);
+                            if (st == AudioSessionStateActive) {
+                                lastActive = nowMs;
+                                m->lastActiveByKeyStr.insert(keyStr, lastActive);
+                            }
+
+                            SessionState ss;
+                            ss.deviceId = id;
+                            ss.pid = static_cast<quint32>(pid);
+                            ss.exePath = exe;
+                            ss.displayName = display;
+                            ss.iconKey = exe;
+                            ss.volume = sVol;
+                            ss.muted = (sMute == TRUE);
+                            ss.active = (st == AudioSessionStateActive);
+                            ss.lastActiveMs = lastActive;
+
+                            Impl::SessionKey key{id, static_cast<quint32>(pid), exe};
+                            Impl::SessionCom sc;
+                            sc.ctrl.attach(ctrl.detach());
+                            sc.ctrl2.attach(ctrl2.detach());
+                            sc.simple.attach(simple.detach());
+
                             if (sc.ctrl) {
-                                // RegisterAudioSessionNotification does NOT guarantee AddRef on events across all implementations,
-                                // so we keep an explicit ref we own.
-                                events->AddRef();
-                                sc.ctrl->RegisterAudioSessionNotification(events);
-                                sc.events = events;
+                                ComPtr<IAudioMeterInformation> meter;
+                                if (SUCCEEDED(sc.ctrl->QueryInterface(IID_IAudioMeterInformation, reinterpret_cast<void **>(meter.put()))) && meter)
+                                    sc.meter.attach(meter.detach());
                             }
-                            events->Release(); // balance initial ref
-                        }
 
-                        // Only store session if not destroying
-                        if (!m_destroying.load() && m) {
-                            m->sessions.insert({key, std::move(sc)});
-                            ds.sessions.push_back(ss);
+                            sc.lastActiveMs = lastActive;
+                            sc.state = st;
+                            if (!m_destroying.load() && m) {
+                                auto *events = new Impl::SessionEvents(this, key);
+                                if (sc.ctrl) {
+                                    events->AddRef();
+                                    sc.ctrl->RegisterAudioSessionNotification(events);
+                                    sc.events = events;
+                                }
+                                events->Release();
+                            }
+
+                            if (!m_destroying.load() && m) {
+                                m->sessions.insert({key, std::move(sc)});
+                                ds.sessions.push_back(ss);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Final check before storing - don't add to cache if destroying
-        if (!m_destroying.load() && m) {
-            m->devices.emplace(id, std::move(dc));
-            devices.push_back(ds);
+            if (!m_destroying.load() && m) {
+                m->devices.emplace(id, std::move(dc));
+                devices.push_back(ds);
+            }
         }
-    }
+    };
+
+    appendEndpoints(eRender, DeviceDirection::Output);
+    if (m_showInputDevices)
+        appendEndpoints(eCapture, DeviceDirection::Input);
 
     if (m->lastActiveByKeyStr.size() > 5000) {
         qint64 cutoff = nowMs - 3600000LL; // 1 hour ago

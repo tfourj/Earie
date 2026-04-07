@@ -27,6 +27,7 @@ QVariant DeviceListModel::data(const QModelIndex &index, int role) const
     case DeviceObjectRole: return QVariant::fromValue(static_cast<QObject *>(d));
     case DeviceIdRole: return d->id();
     case NameRole: return d->name();
+    case IsInputRole: return d->isInput();
     case IsDefaultRole: return d->isDefault();
     case VolumeRole: return d->volume();
     case MutedRole: return d->muted();
@@ -41,6 +42,7 @@ QHash<int, QByteArray> DeviceListModel::roleNames() const
         { DeviceObjectRole, "deviceObject" },
         { DeviceIdRole, "deviceId" },
         { NameRole, "name" },
+        { IsInputRole, "isInput" },
         { IsDefaultRole, "isDefault" },
         { VolumeRole, "volume" },
         { MutedRole, "muted" },

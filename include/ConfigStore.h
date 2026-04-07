@@ -27,6 +27,9 @@ public:
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
 
+    bool showInputDevices() const { return m_showInputDevices; }
+    void setShowInputDevices(bool v);
+
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
 
@@ -69,6 +72,7 @@ signals:
 private:
     Mode m_mode = Mode::DefaultDeviceOnly;
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_debugMode = false;

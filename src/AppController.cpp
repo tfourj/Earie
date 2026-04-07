@@ -51,6 +51,7 @@ static void openWindowsVolumeMixer();
 static void openWindowsPlaybackDevices();
 static void openWindowsSoundSettings();
 static void setFileLoggingEnabled(bool enabled);
+static QString deviceMenuLabel(const QString &name, DeviceDirection direction);
 
 static bool s_fileLoggingEnabled = false;
 
@@ -98,6 +99,14 @@ static void setFileLoggingEnabled(bool enabled)
     } else {
         qInstallMessageHandler(nullptr);
     }
+}
+
+static QString deviceMenuLabel(const QString &name, DeviceDirection direction)
+{
+    const QString base = name.trimmed().isEmpty() ? QStringLiteral("Unknown device") : name.trimmed();
+    return QStringLiteral("[%1] %2")
+        .arg(direction == DeviceDirection::Input ? QStringLiteral("Input") : QStringLiteral("Playback"))
+        .arg(base);
 }
 
 AppController::AppController(QObject *parent)
@@ -164,6 +173,7 @@ bool AppController::init()
 
     m_allDevices = (m_config->mode() == ConfigStore::Mode::AllDevices);
     m_showSystemSessions = m_config->showSystemSessions();
+    m_showInputDevices = m_config->showInputDevices();
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
@@ -177,6 +187,7 @@ bool AppController::init()
     m_audio->setConfig(m_config);
     m_audio->setAllDevices(m_allDevices);
     m_audio->setShowSystemSessions(m_showSystemSessions);
+    m_audio->setShowInputDevices(m_showInputDevices);
     m_audio->start();
 
     buildFlyout();
@@ -273,9 +284,10 @@ QVariantList AppController::hiddenDevicesSnapshot() const
         seen.insert(d.id);
         QVariantMap m;
         m.insert(QStringLiteral("deviceId"), d.id);
-        m.insert(QStringLiteral("name"), d.name.isEmpty() ? d.id : d.name);
+        m.insert(QStringLiteral("name"), deviceMenuLabel(d.name.isEmpty() ? d.id : d.name, d.direction));
         m.insert(QStringLiteral("connected"), true);
         m.insert(QStringLiteral("hidden"), m_config->isDeviceHidden(d.id));
+        m.insert(QStringLiteral("isInput"), d.direction == DeviceDirection::Input);
         out.append(m);
     }
 
@@ -288,6 +300,7 @@ QVariantList AppController::hiddenDevicesSnapshot() const
         m.insert(QStringLiteral("name"), hiddenName.isEmpty() ? hiddenId : hiddenName);
         m.insert(QStringLiteral("connected"), false);
         m.insert(QStringLiteral("hidden"), true);
+        m.insert(QStringLiteral("isInput"), false);
         out.append(m);
     }
     return out;
@@ -396,9 +409,10 @@ QVariantList AppController::hiddenProcessesPerDeviceSnapshot() const
 
         QVariantMap dev;
         dev.insert(QStringLiteral("deviceId"), d.id);
-        dev.insert(QStringLiteral("name"), d.name.isEmpty() ? d.id : d.name);
+        dev.insert(QStringLiteral("name"), deviceMenuLabel(d.name.isEmpty() ? d.id : d.name, d.direction));
         dev.insert(QStringLiteral("connected"), true);
         dev.insert(QStringLiteral("processes"), procList);
+        dev.insert(QStringLiteral("isInput"), d.direction == DeviceDirection::Input);
         out.append(dev);
     }
 
@@ -552,6 +566,18 @@ void AppController::openConfigFolder()
         return;
     const QString dir = QFileInfo(m_config->configPath()).absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void AppController::setShowInputDevices(bool v)
+{
+    if (m_showInputDevices == v)
+        return;
+    m_showInputDevices = v;
+    if (m_config)
+        m_config->setShowInputDevices(m_showInputDevices);
+    if (m_audio)
+        m_audio->setShowInputDevices(m_showInputDevices);
+    emit showInputDevicesChanged();
 }
 
 void AppController::openAppFolder()
@@ -787,6 +813,12 @@ void AppController::buildFlyout()
     m_view->rootContext()->setContextProperty(
         QStringLiteral("deviceModel"),
         m_audio ? static_cast<QObject *>(m_audio->deviceModel()) : nullptr);
+    m_view->rootContext()->setContextProperty(
+        QStringLiteral("outputDeviceModel"),
+        m_audio ? m_audio->outputDeviceModel() : nullptr);
+    m_view->rootContext()->setContextProperty(
+        QStringLiteral("inputDeviceModel"),
+        m_audio ? m_audio->inputDeviceModel() : nullptr);
     if (m_audio && m_audio->iconCache()) {
         m_view->engine()->addImageProvider(QStringLiteral("appicon"), m_audio->iconCache());
     }
@@ -805,8 +837,9 @@ void AppController::buildFlyout()
     qInfo() << "Preloaded main QML view.";
 
     // Auto-resize while visible when switching modes / devices list changes.
-    if (m_audio && m_audio->deviceModel()) {
-        auto *model = static_cast<QAbstractItemModel *>(m_audio->deviceModel());
+    auto bindRelayout = [this](QAbstractItemModel *model) {
+        if (!model)
+            return;
         auto relayout = [this]() {
             if (!m_view || !m_view->isVisible())
                 return;
@@ -828,7 +861,9 @@ void AppController::buildFlyout()
         connect(model, &QAbstractItemModel::rowsRemoved, this, relayout);
         connect(model, &QAbstractItemModel::modelReset, this, relayout);
         connect(model, &QAbstractItemModel::layoutChanged, this, relayout);
-    }
+    };
+    bindRelayout(qobject_cast<QAbstractItemModel *>(m_audio ? m_audio->outputDeviceModel() : nullptr));
+    bindRelayout(qobject_cast<QAbstractItemModel *>(m_audio ? m_audio->inputDeviceModel() : nullptr));
 }
 
 void AppController::buildHiddenItemsWindow()
@@ -1279,7 +1314,7 @@ void AppController::rebuildHiddenMenus()
             if (d.id.isEmpty())
                 continue;
             seen.insert(d.id);
-            addCheckItem(m_hiddenDevicesMenu, d.name, m_config->isDeviceHidden(d.id), [this, id = d.id](bool checked) {
+            addCheckItem(m_hiddenDevicesMenu, deviceMenuLabel(d.name, d.direction), m_config->isDeviceHidden(d.id), [this, id = d.id](bool checked) {
                 m_config->setDeviceHidden(id, checked);
                 m_audio->refresh(); // re-filter
                 emit hiddenItemsChanged();
@@ -1349,7 +1384,7 @@ void AppController::rebuildHiddenMenus()
     }
 
     for (const auto &d : devicesVisible) {
-        QMenu *devMenu = perDeviceMenu->addMenu(d.name);
+        QMenu *devMenu = perDeviceMenu->addMenu(deviceMenuLabel(d.name, d.direction));
         const auto perDevKnown = m_audio->knownProcessesForDeviceSnapshot(d.id);
         QHash<QString, QString> perNameByExe;
         perNameByExe.reserve(perDevKnown.size());

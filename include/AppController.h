@@ -20,6 +20,7 @@ class AppController final : public QObject
     Q_OBJECT
     Q_PROPERTY(bool allDevices READ allDevices WRITE setAllDevices NOTIFY allDevicesChanged)
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
+    Q_PROPERTY(bool showInputDevices READ showInputDevices WRITE setShowInputDevices NOTIFY showInputDevicesChanged)
     Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
     Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
     Q_PROPERTY(bool startWithWindows READ startWithWindows WRITE setStartWithWindows NOTIFY startWithWindowsChanged)
@@ -37,6 +38,9 @@ public:
 
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
+
+    bool showInputDevices() const { return m_showInputDevices; }
+    void setShowInputDevices(bool v);
 
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
@@ -83,6 +87,7 @@ public slots:
 signals:
     void allDevicesChanged();
     void showSystemSessionsChanged();
+    void showInputDevicesChanged();
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
     void startWithWindowsChanged();
@@ -132,6 +137,7 @@ private:
 
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_startWithWindows = false;

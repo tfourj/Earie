@@ -5,12 +5,14 @@
 #include <QTimer>
 #include <QString>
 
+#include "AudioWorker.h"
 #include "SessionListModel.h"
 class AudioBackend;
 
 class AudioDevice final : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool isInput READ isInput NOTIFY changed)
     Q_PROPERTY(QString id READ id CONSTANT)
     Q_PROPERTY(QString name READ name NOTIFY changed)
     Q_PROPERTY(bool isDefault READ isDefault NOTIFY changed)
@@ -19,10 +21,13 @@ class AudioDevice final : public QObject
     Q_PROPERTY(double peak READ peak NOTIFY changed) // 0..1
     Q_PROPERTY(QAbstractItemModel* sessionsModel READ sessionsModel CONSTANT)
 public:
-    explicit AudioDevice(AudioBackend *backend, const QString &id, const QString &name, QObject *parent = nullptr);
+    explicit AudioDevice(AudioBackend *backend, const QString &id, const QString &name,
+                         DeviceDirection direction, QObject *parent = nullptr);
 
     QString id() const { return m_id; }
     QString name() const { return m_name; }
+    bool isInput() const { return m_direction == DeviceDirection::Input; }
+    DeviceDirection direction() const { return m_direction; }
     bool isDefault() const { return m_isDefault; }
     double volume() const { return m_volume; }
     bool muted() const { return m_muted; }
@@ -34,6 +39,7 @@ public:
     SessionListModel *sessionsModelTyped() const { return m_sessions; }
 
     void setName(const QString &n);
+    void setDirection(DeviceDirection direction);
     void setIsDefault(bool d);
     void setVolumeInternal(double v);
     void setMutedInternal(bool m);
@@ -53,6 +59,7 @@ private:
     AudioBackend *m_backend = nullptr;
     QString m_id;
     QString m_name;
+    DeviceDirection m_direction = DeviceDirection::Output;
     bool m_isDefault = false;
     double m_volume = 1.0;
     bool m_muted = false;

@@ -4,6 +4,13 @@
 #include <QTimer>
 #include <QVector>
 
+enum class DeviceDirection
+{
+    Output = 0,
+    Input
+};
+Q_DECLARE_METATYPE(DeviceDirection)
+
 struct SessionState
 {
     QString deviceId;
@@ -21,6 +28,7 @@ struct DeviceState
 {
     QString id;
     QString name;
+    DeviceDirection direction = DeviceDirection::Output;
     bool isDefault = false;
     double volume = 1.0; // 0..1
     bool muted = false;
@@ -53,6 +61,7 @@ public slots:
     void stop();
 
     void setShowSystemSessions(bool show);
+    void setShowInputDevices(bool show);
 
     void setDeviceVolume(const QString &deviceId, double volume01);
     void setDeviceMuted(const QString &deviceId, bool muted);
@@ -70,6 +79,7 @@ private:
     void emitPeaksNow();
 
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
     std::atomic<bool> m_destroying{false};
     QTimer m_snapshotTimer;
     QTimer m_meterTimer;

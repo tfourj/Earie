@@ -26,6 +26,7 @@ qt_add_executable(${TARGET_NAME} WIN32
     src/ComInit.cpp
     src/ConfigStore.cpp
     src/DeviceListModel.cpp
+    src/DeviceDirectionProxyModel.cpp
     src/IconCache.cpp
     src/SessionListModel.cpp
     src/UpdateCoalescer.cpp
@@ -42,6 +43,7 @@ qt_add_executable(${TARGET_NAME} WIN32
     include/ComInit.h
     include/ConfigStore.h
     include/DeviceListModel.h
+    include/DeviceDirectionProxyModel.h
     include/IconCache.h
     include/SessionListModel.h
     include/UpdateCoalescer.h
