@@ -10,6 +10,7 @@ Item {
     id: root
     width: 420
     implicitHeight: 420
+    readonly property bool inputDevicesEnabled: appController && appController.showInputDevices
 
     readonly property int contentHeightHint: Math.ceil(
         12 * 2
@@ -428,6 +429,7 @@ Item {
                     spacing: 8
 
                     Text {
+                        visible: root.inputDevicesEnabled
                         color: theme.textMuted
                         font.pixelSize: 11
                         text: "Playback"
@@ -449,7 +451,7 @@ Item {
                 }
 
                 Column {
-                    visible: appController && appController.showInputDevices
+                    visible: root.inputDevicesEnabled
                     width: parent.width
                     spacing: 8
 
