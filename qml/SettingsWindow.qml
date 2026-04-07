@@ -55,6 +55,26 @@ Item {
         currentTab = tab
     }
 
+    function ensureItemVisible(item, padding) {
+        if (!item || !settingsScroll)
+            return
+
+        var topPadding = padding === undefined ? 12 : padding
+        var bottomPadding = topPadding
+        var point = item.mapToItem(contentColumn, 0, 0)
+        var top = point.y
+        var bottom = top + item.height
+        var viewTop = settingsScroll.contentY
+        var viewBottom = viewTop + settingsScroll.height
+
+        if (top - topPadding < viewTop) {
+            settingsScroll.contentY = Math.max(0, top - topPadding)
+        } else if (bottom + bottomPadding > viewBottom) {
+            settingsScroll.contentY = Math.min(settingsScroll.contentHeight - settingsScroll.height,
+                                               bottom + bottomPadding - settingsScroll.height)
+        }
+    }
+
     Component.onCompleted: refreshHiddenModels()
     onCurrentTabChanged: if (appController) appController.requestSettingsRelayout()
     onContentHeightHintChanged: if (appController) appController.requestSettingsRelayout()
@@ -281,6 +301,40 @@ Item {
             }
 
             ToolButton {
+                id: backBtn
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 32
+                padding: 0
+                font.family: theme.iconFont
+                text: "\uE72B"
+                font.pixelSize: 10
+
+                background: Rectangle {
+                    radius: 8
+                    color: backBtn.hovered ? theme.cellHover : "transparent"
+                }
+
+                contentItem: Text {
+                    color: theme.text
+                    font.family: theme.iconFont
+                    font.pixelSize: 10
+                    text: backBtn.text
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignLeft
+                    leftPadding: 12
+                }
+
+                onClicked: {
+                    if (!appController)
+                        return
+                    appController.hideSettingsWindow()
+                    Qt.callLater(function() {
+                        appController.showFlyout()
+                    })
+                }
+            }
+
+            ToolButton {
                 id: closeBtn
                 Layout.preferredWidth: 44
                 Layout.preferredHeight: 32
@@ -292,6 +346,16 @@ Item {
                 background: Rectangle {
                     radius: 8
                     color: closeBtn.hovered ? "#C42B1C" : "transparent"
+                }
+
+                contentItem: Text {
+                    color: theme.text
+                    font.family: theme.iconFont
+                    font.pixelSize: 10
+                    text: closeBtn.text
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignRight
+                    rightPadding: 12
                 }
 
                 onClicked: if (appController) appController.hideSettingsWindow()
@@ -325,6 +389,7 @@ Item {
             }
 
             Flickable {
+                id: settingsScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -637,6 +702,7 @@ Item {
                             Repeater {
                                 model: perDeviceProcesses
                                 delegate: Column {
+                                    id: perDeviceSection
                                     width: parent.width
                                     spacing: 6
                                     required property var modelData
@@ -656,7 +722,15 @@ Item {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.setPerDeviceExpanded(deviceId, !expanded)
+                                            onPressed: mouse.accepted = true
+                                            onClicked: {
+                                                root.setPerDeviceExpanded(deviceId, !expanded)
+                                                if (!expanded) {
+                                                    Qt.callLater(function() {
+                                                        root.ensureItemVisible(perDeviceSection, 18)
+                                                    })
+                                                }
+                                            }
                                         }
 
                                         Row {
