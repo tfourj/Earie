@@ -8,6 +8,7 @@ Item {
     id: root
     property var deviceObject
     property string title: deviceObject ? deviceObject.name : ""
+    property bool isInput: deviceObject ? deviceObject.isInput : false
     property bool isDefault: deviceObject ? deviceObject.isDefault : false
     property var sessionsModel: deviceObject ? deviceObject.sessionsModel : null
 
@@ -57,6 +58,23 @@ Item {
                     color: theme.accent
                     font.pixelSize: 11
                     text: "Default"
+                }
+            }
+
+            Rectangle {
+                visible: root.isInput
+                radius: 8
+                color: Qt.rgba(1, 1, 1, 0.08)
+                border.color: Qt.rgba(1, 1, 1, 0.12)
+                border.width: 1
+                Layout.preferredHeight: 18
+                Layout.preferredWidth: 42
+
+                Text {
+                    anchors.centerIn: parent
+                    color: theme.textMuted
+                    font.pixelSize: 11
+                    text: "Input"
                 }
             }
         }
