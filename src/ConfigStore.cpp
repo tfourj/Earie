@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QtGlobal>
 
 ConfigStore::ConfigStore(QObject *parent)
     : QObject(parent)
@@ -46,6 +47,7 @@ void ConfigStore::load()
     m_debugMode = o.value(QStringLiteral("debugMode")).toBool(false);
     m_startWithWindows = o.value(QStringLiteral("startWithWindows")).toBool(false);
     m_useNativeTrayIcon = o.value(QStringLiteral("useNativeTrayIcon")).toBool(false);
+    m_deviceColorOpacity = qBound(0.0, o.value(QStringLiteral("deviceColorOpacity")).toDouble(1.0), 1.0);
     const QString trayMode = o.value(QStringLiteral("trayIconMode")).toString();
     if (trayMode == QLatin1String("black"))
         m_trayIconMode = TrayIconMode::Black;
@@ -128,6 +130,7 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("debugMode"), m_debugMode);
     o.insert(QStringLiteral("startWithWindows"), m_startWithWindows);
     o.insert(QStringLiteral("useNativeTrayIcon"), m_useNativeTrayIcon);
+    o.insert(QStringLiteral("deviceColorOpacity"), m_deviceColorOpacity);
     o.insert(QStringLiteral("trayIconMode"),
         m_trayIconMode == TrayIconMode::Black ? QStringLiteral("black") : QStringLiteral("white"));
 
@@ -262,6 +265,15 @@ void ConfigStore::setUseNativeTrayIcon(bool v)
     if (m_useNativeTrayIcon == v)
         return;
     m_useNativeTrayIcon = v;
+    emit changed();
+}
+
+void ConfigStore::setDeviceColorOpacity(double v)
+{
+    const double clamped = qBound(0.0, v, 1.0);
+    if (qFuzzyCompare(m_deviceColorOpacity, clamped))
+        return;
+    m_deviceColorOpacity = clamped;
     emit changed();
 }
 

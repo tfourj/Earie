@@ -73,20 +73,26 @@ QtObject {
         return colorKey ? presetColor(colorKey) : accent
     }
 
+    function deviceTintOpacity() {
+        if (!appController)
+            return 1.0
+        return Math.max(0.0, Math.min(1.0, appController.deviceColorOpacity))
+    }
+
     function deviceCardBg(colorKey) {
-        return colorKey ? blend(cellBg, presetColor(colorKey), 0.48) : cellBg
+        return colorKey ? blend(cellBg, presetColor(colorKey), 0.48 * deviceTintOpacity()) : cellBg
     }
 
     function deviceCardHover(colorKey) {
-        return colorKey ? blend(cellHover, presetColor(colorKey), 0.56) : cellHover
+        return colorKey ? blend(cellHover, presetColor(colorKey), 0.56 * deviceTintOpacity()) : cellHover
     }
 
     function deviceBorder(colorKey, isDefault) {
         if (!colorKey)
             return isDefault ? accent : divider
         return isDefault
-            ? blend(accent, presetColor(colorKey), 0.55)
-            : blend(divider, presetColor(colorKey), 0.42)
+            ? blend(accent, presetColor(colorKey), 0.55 * deviceTintOpacity())
+            : blend(divider, presetColor(colorKey), 0.42 * deviceTintOpacity())
     }
 
     function deviceBadgeBg(colorKey, emphasized) {
@@ -94,7 +100,7 @@ QtObject {
             return emphasized
                 ? Qt.rgba(accent.r, accent.g, accent.b, 0.18)
                 : Qt.rgba(1, 1, 1, 0.08)
-        return withAlpha(blend(cellBg, presetColor(colorKey), emphasized ? 0.48 : 0.30), emphasized ? 0.95 : 0.90)
+        return withAlpha(blend(cellBg, presetColor(colorKey), (emphasized ? 0.48 : 0.30) * deviceTintOpacity()), emphasized ? 0.95 : 0.90)
     }
 
     function deviceBadgeBorder(colorKey, emphasized) {
@@ -102,24 +108,24 @@ QtObject {
             return emphasized
                 ? Qt.rgba(accent.r, accent.g, accent.b, 0.55)
                 : Qt.rgba(1, 1, 1, 0.12)
-        return withAlpha(blend(divider, presetColor(colorKey), emphasized ? 0.72 : 0.52), emphasized ? 0.95 : 0.70)
+        return withAlpha(blend(divider, presetColor(colorKey), (emphasized ? 0.72 : 0.52) * deviceTintOpacity()), emphasized ? 0.95 : 0.70)
     }
 
     function deviceBadgeText(colorKey, emphasized) {
         if (!colorKey)
             return emphasized ? accent : textMuted
-        return emphasized ? text : blend(textMuted, presetColor(colorKey), 0.35)
+        return emphasized ? text : blend(textMuted, presetColor(colorKey), 0.35 * deviceTintOpacity())
     }
 
     function sessionRowBg(colorKey) {
-        return colorKey ? blend(cellBg, presetColor(colorKey), 0.34) : "transparent"
+        return colorKey ? blend(cellBg, presetColor(colorKey), 0.34 * deviceTintOpacity()) : "transparent"
     }
 
     function sessionRowHover(colorKey) {
-        return colorKey ? blend(cellHover, presetColor(colorKey), 0.42) : cellHover
+        return colorKey ? blend(cellHover, presetColor(colorKey), 0.42 * deviceTintOpacity()) : cellHover
     }
 
     function sessionRowBorder(colorKey) {
-        return colorKey ? withAlpha(blend(divider, presetColor(colorKey), 0.46), 0.92) : "transparent"
+        return colorKey ? withAlpha(blend(divider, presetColor(colorKey), 0.46 * deviceTintOpacity()), 0.92) : "transparent"
     }
 }

@@ -28,6 +28,7 @@ class AppController final : public QObject
     Q_PROPERTY(bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
     Q_PROPERTY(bool useNativeTrayIcon READ useNativeTrayIcon WRITE setUseNativeTrayIcon NOTIFY useNativeTrayIconChanged)
     Q_PROPERTY(int trayIconMode READ trayIconMode WRITE setTrayIconMode NOTIFY trayIconModeChanged)
+    Q_PROPERTY(double deviceColorOpacity READ deviceColorOpacity WRITE setDeviceColorOpacity NOTIFY deviceColorOpacityChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -63,6 +64,9 @@ public:
 
     int trayIconMode() const { return m_trayIconMode; }
     void setTrayIconMode(int v);
+
+    double deviceColorOpacity() const { return m_deviceColorOpacity; }
+    void setDeviceColorOpacity(double v);
 
 public slots:
     Q_INVOKABLE void toggleFlyout();
@@ -106,6 +110,7 @@ signals:
     void debugModeChanged();
     void useNativeTrayIconChanged();
     void trayIconModeChanged();
+    void deviceColorOpacityChanged();
     void closeAllPopupsRequested();
     void hiddenItemsChanged();
     void deviceAppearanceChanged();
@@ -166,6 +171,7 @@ private:
     bool m_debugMode = false;
     bool m_useNativeTrayIcon = false;
     int m_trayIconMode = 0;
+    double m_deviceColorOpacity = 1.0;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;

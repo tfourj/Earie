@@ -40,6 +40,7 @@
 #include <QHash>
 #include <QSet>
 #include <QVector>
+#include <QtGlobal>
 #include <algorithm>
 
 #include <windows.h>
@@ -183,6 +184,7 @@ bool AppController::init()
     m_debugMode = m_config->debugMode();
     m_useNativeTrayIcon = m_config->useNativeTrayIcon();
     m_trayIconMode = static_cast<int>(m_config->trayIconMode());
+    m_deviceColorOpacity = m_config->deviceColorOpacity();
     setFileLoggingEnabled(m_debugMode);
     applyStartWithWindows(m_startWithWindows);
 
@@ -622,6 +624,17 @@ void AppController::setTrayIconMode(int v)
         m_config->setTrayIconMode(static_cast<ConfigStore::TrayIconMode>(m_trayIconMode));
     updateTrayIcon();
     emit trayIconModeChanged();
+}
+
+void AppController::setDeviceColorOpacity(double v)
+{
+    const double clamped = qBound(0.0, v, 1.0);
+    if (qFuzzyCompare(m_deviceColorOpacity, clamped))
+        return;
+    m_deviceColorOpacity = clamped;
+    if (m_config)
+        m_config->setDeviceColorOpacity(m_deviceColorOpacity);
+    emit deviceColorOpacityChanged();
 }
 
 void AppController::openConfigFolder()

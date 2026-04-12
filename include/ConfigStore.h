@@ -63,6 +63,8 @@ public:
     void setDeviceOrder(const QStringList &order);
     QString deviceColor(const QString &deviceId) const;
     void setDeviceColor(const QString &deviceId, const QString &colorKey);
+    double deviceColorOpacity() const { return m_deviceColorOpacity; }
+    void setDeviceColorOpacity(double v);
     QStringList rememberedDeviceIds() const;
 
     bool isProcessHiddenGlobal(const QString &exePath) const;
@@ -92,6 +94,7 @@ private:
     QSet<QString> m_hiddenDevices;
     QHash<QString, QString> m_deviceNames; // deviceId -> last known name
     QHash<QString, QString> m_deviceColors; // deviceId -> palette key
+    double m_deviceColorOpacity = 1.0;
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
 

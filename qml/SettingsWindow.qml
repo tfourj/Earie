@@ -610,6 +610,47 @@ Item {
                                 text: "Pick a preset tint for each device card. Saved colors remain available for remembered disconnected devices."
                             }
 
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    color: theme.text
+                                    font.pixelSize: 12
+                                    text: "Global tint opacity"
+                                }
+
+                                RowLayout {
+                                    width: parent.width
+                                    spacing: 12
+
+                                    Styles.SliderStyle {
+                                        id: deviceOpacitySlider
+                                        Layout.fillWidth: true
+                                        from: 0.0
+                                        to: 1.0
+                                        value: appController ? appController.deviceColorOpacity : 1.0
+                                        onMoved: if (appController) appController.deviceColorOpacity = value
+
+                                        Connections {
+                                            target: appController
+                                            function onDeviceColorOpacityChanged() {
+                                                if (!deviceOpacitySlider.pressed && appController)
+                                                    deviceOpacitySlider.value = appController.deviceColorOpacity
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.preferredWidth: 44
+                                        horizontalAlignment: Text.AlignRight
+                                        color: theme.textMuted
+                                        font.pixelSize: 12
+                                        text: Math.round(deviceOpacitySlider.value * 100) + "%"
+                                    }
+                                }
+                            }
+
                             Text {
                                 visible: deviceAppearances.length === 0
                                 color: theme.textMuted
