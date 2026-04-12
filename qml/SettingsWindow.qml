@@ -14,6 +14,7 @@ Item {
     property var globalProcesses: []
     property var perDeviceProcesses: []
     property var deviceAppearances: []
+    readonly property var paletteOptions: theme.paletteModel()
     property var perDeviceExpandedMap: ({})
 
     readonly property int contentHeightHint: Math.ceil(
@@ -60,6 +61,15 @@ Item {
 
     function openTab(tab) {
         currentTab = tab
+    }
+
+    function paletteIndexForKey(colorKey) {
+        const key = colorKey || ""
+        for (let i = 0; i < paletteOptions.length; ++i) {
+            if ((paletteOptions[i].key || "") === key)
+                return i
+        }
+        return 0
     }
 
     function logDebug(message) {
@@ -295,58 +305,6 @@ Item {
 
         MouseArea {
             id: actionMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: parent.clicked()
-        }
-    }
-
-    component DeviceColorButton: Rectangle {
-        required property string colorKey
-        required property string label
-        required property bool selected
-        required property color swatchColor
-        signal clicked()
-
-        radius: 10
-        implicitHeight: 30
-        implicitWidth: colorRow.implicitWidth + 18
-        color: selected ? theme.deviceCardHover(colorKey) : theme.cellBg
-        border.width: 1
-        border.color: selected ? theme.deviceBorder(colorKey, true) : Qt.rgba(1, 1, 1, 0.08)
-
-        Row {
-            id: colorRow
-            anchors.centerIn: parent
-            spacing: 8
-
-            Rectangle {
-                width: 12
-                height: 12
-                radius: 6
-                color: swatchColor
-                border.width: colorKey === "" ? 1 : 0
-                border.color: Qt.rgba(1, 1, 1, 0.18)
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 6
-                    height: 2
-                    radius: 1
-                    color: colorKey === "" ? theme.textMuted : "transparent"
-                }
-            }
-
-            Text {
-                color: selected ? theme.text : theme.textMuted
-                font.pixelSize: 11
-                font.bold: selected
-                text: label
-            }
-        }
-
-        MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -706,22 +664,162 @@ Item {
                                             }
                                         }
 
-                                        Flow {
+                                        RowLayout {
                                             width: parent.width
-                                            spacing: 8
+                                            spacing: 10
 
-                                            Repeater {
-                                                model: theme.paletteModel()
-                                                delegate: DeviceColorButton {
-                                                    colorKey: modelData.key
-                                                    label: modelData.label
-                                                    swatchColor: modelData.color
-                                                    selected: (modelData.key || "") === (deviceEntry.colorKey || "")
-                                                    onClicked: {
-                                                        if (!appController)
-                                                            return
-                                                        appController.setDeviceColor(deviceEntry.deviceId, modelData.key || "")
+                                            Rectangle {
+                                                Layout.preferredWidth: 16
+                                                Layout.preferredHeight: 16
+                                                radius: 8
+                                                color: theme.deviceAccent(deviceEntry.colorKey || "")
+                                                border.width: (deviceEntry.colorKey || "") === "" ? 1 : 0
+                                                border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                                                Rectangle {
+                                                    anchors.centerIn: parent
+                                                    width: 8
+                                                    height: 2
+                                                    radius: 1
+                                                    color: (deviceEntry.colorKey || "") === "" ? theme.textMuted : "transparent"
+                                                }
+                                            }
+
+                                            ComboBox {
+                                                id: colorCombo
+                                                Layout.preferredWidth: 180
+                                                model: root.paletteOptions
+                                                textRole: "label"
+                                                currentIndex: root.paletteIndexForKey(deviceEntry.colorKey || "")
+
+                                                delegate: ItemDelegate {
+                                                    readonly property var option: root.paletteOptions[index] || ({ key: "", label: "Default", color: theme.accent })
+                                                    width: colorCombo.width
+                                                    highlighted: colorCombo.highlightedIndex === index
+
+                                                    contentItem: Row {
+                                                        spacing: 8
+
+                                                        Rectangle {
+                                                            width: 12
+                                                            height: 12
+                                                            radius: 6
+                                                            color: option.color
+                                                            border.width: (option.key || "") === "" ? 1 : 0
+                                                            border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                                                            Rectangle {
+                                                                anchors.centerIn: parent
+                                                                width: 6
+                                                                height: 2
+                                                                radius: 1
+                                                                color: (option.key || "") === "" ? theme.textMuted : "transparent"
+                                                            }
+                                                        }
+
+                                                        Text {
+                                                            color: theme.text
+                                                            font.pixelSize: 12
+                                                            text: option.label || ""
+                                                            verticalAlignment: Text.AlignVCenter
+                                                        }
                                                     }
+
+                                                    background: Rectangle {
+                                                        color: colorCombo.highlightedIndex === index ? theme.cellHover : "transparent"
+                                                        radius: 8
+                                                    }
+                                                }
+
+                                                contentItem: Item {
+                                                    implicitHeight: previewRow.implicitHeight
+
+                                                    Row {
+                                                        id: previewRow
+                                                        anchors.left: parent.left
+                                                        anchors.leftMargin: 10
+                                                        anchors.right: parent.right
+                                                        anchors.rightMargin: colorCombo.indicator.width + 18
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        spacing: 8
+
+                                                        Rectangle {
+                                                            width: 12
+                                                            height: 12
+                                                            radius: 6
+                                                            color: {
+                                                                const idx = colorCombo.currentIndex
+                                                                return idx >= 0 && idx < root.paletteOptions.length
+                                                                    ? root.paletteOptions[idx].color
+                                                                    : theme.accent
+                                                            }
+                                                            border.width: (deviceEntry.colorKey || "") === "" ? 1 : 0
+                                                            border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                                                            Rectangle {
+                                                                anchors.centerIn: parent
+                                                                width: 6
+                                                                height: 2
+                                                                radius: 1
+                                                                color: (deviceEntry.colorKey || "") === "" ? theme.textMuted : "transparent"
+                                                            }
+                                                        }
+
+                                                        Text {
+                                                            color: theme.text
+                                                            font.pixelSize: 12
+                                                            text: {
+                                                                const idx = colorCombo.currentIndex
+                                                                return idx >= 0 && idx < root.paletteOptions.length
+                                                                    ? root.paletteOptions[idx].label
+                                                                    : "Default"
+                                                            }
+                                                            verticalAlignment: Text.AlignVCenter
+                                                        }
+                                                    }
+                                                }
+
+                                                background: Rectangle {
+                                                    radius: 10
+                                                    color: theme.cellBg
+                                                    border.width: 1
+                                                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                                                }
+
+                                                indicator: Text {
+                                                    x: colorCombo.width - width - 12
+                                                    y: (colorCombo.height - height) / 2
+                                                    color: theme.textMuted
+                                                    font.family: theme.iconFont
+                                                    font.pixelSize: 10
+                                                    text: "\uE70D"
+                                                }
+
+                                                popup: Popup {
+                                                    y: colorCombo.height + 4
+                                                    width: colorCombo.width
+                                                    implicitHeight: Math.min(contentItem.implicitHeight + 12, 280)
+                                                    padding: 6
+
+                                                    background: Rectangle {
+                                                        radius: 10
+                                                        color: Qt.rgba(0x20 / 255, 0x22 / 255, 0x26 / 255, 0.95)
+                                                        border.color: Qt.rgba(1, 1, 1, 0.08)
+                                                        border.width: 1
+                                                    }
+
+                                                    contentItem: ListView {
+                                                        clip: true
+                                                        implicitHeight: contentHeight
+                                                        model: colorCombo.popup.visible ? colorCombo.delegateModel : null
+                                                        currentIndex: colorCombo.highlightedIndex
+                                                    }
+                                                }
+
+                                                onActivated: function(index) {
+                                                    if (!appController || index < 0 || index >= root.paletteOptions.length)
+                                                        return
+                                                    appController.setDeviceColor(deviceEntry.deviceId, root.paletteOptions[index].key || "")
                                                 }
                                             }
                                         }
