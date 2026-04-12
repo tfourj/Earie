@@ -88,6 +88,9 @@ public slots:
     Q_INVOKABLE QVariantList hiddenDevicesSnapshot() const;
     Q_INVOKABLE QVariantList hiddenProcessesGlobalSnapshot() const;
     Q_INVOKABLE QVariantList hiddenProcessesPerDeviceSnapshot() const;
+    Q_INVOKABLE QVariantList deviceAppearanceSnapshot() const;
+    Q_INVOKABLE QString deviceColor(const QString &deviceId) const;
+    Q_INVOKABLE void setDeviceColor(const QString &deviceId, const QString &colorKey);
     Q_INVOKABLE void popupOpened();
     Q_INVOKABLE void popupClosed();
     void showAboutDialog();
@@ -105,6 +108,7 @@ signals:
     void trayIconModeChanged();
     void closeAllPopupsRequested();
     void hiddenItemsChanged();
+    void deviceAppearanceChanged();
 
 private slots:
     void rebuildHiddenMenus();

@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -57,19 +58,29 @@ void ConfigStore::load()
         if (!id.isEmpty())
             m_hiddenDevices.insert(id);
     }
-    m_hiddenDeviceNames.clear();
+    m_deviceNames.clear();
+    const QJsonObject deviceNames = o.value(QStringLiteral("deviceNames")).toObject();
+    for (auto it = deviceNames.begin(); it != deviceNames.end(); ++it) {
+        const QString id = it.key();
+        const QString name = it.value().toString().trimmed();
+        if (!id.isEmpty() && !name.isEmpty())
+            m_deviceNames.insert(id, name);
+    }
     const QJsonObject hiddenNames = o.value(QStringLiteral("hiddenDeviceNames")).toObject();
     for (auto it = hiddenNames.begin(); it != hiddenNames.end(); ++it) {
         const QString id = it.key();
         const QString name = it.value().toString().trimmed();
-        if (!id.isEmpty() && !name.isEmpty())
-            m_hiddenDeviceNames.insert(id, name);
+        if (!id.isEmpty() && !name.isEmpty() && !m_deviceNames.contains(id))
+            m_deviceNames.insert(id, name);
     }
-    for (auto it = m_hiddenDeviceNames.begin(); it != m_hiddenDeviceNames.end();) {
-        if (!m_hiddenDevices.contains(it.key()))
-            it = m_hiddenDeviceNames.erase(it);
-        else
-            ++it;
+
+    m_deviceColors.clear();
+    const QJsonObject deviceColors = o.value(QStringLiteral("deviceColors")).toObject();
+    for (auto it = deviceColors.begin(); it != deviceColors.end(); ++it) {
+        const QString id = it.key();
+        const QString colorKey = it.value().toString().trimmed();
+        if (!id.isEmpty() && !colorKey.isEmpty())
+            m_deviceColors.insert(id, colorKey);
     }
 
     m_hiddenProcessesGlobal.clear();
@@ -107,7 +118,7 @@ void ConfigStore::save() const
     QDir().mkpath(QFileInfo(path).absolutePath());
 
     QJsonObject o;
-    o.insert(QStringLiteral("schemaVersion"), 1);
+    o.insert(QStringLiteral("schemaVersion"), 2);
     o.insert(QStringLiteral("mode"), m_mode == Mode::AllDevices ? QStringLiteral("all") : QStringLiteral("default"));
     o.insert(QStringLiteral("showSystemSessions"), m_showSystemSessions);
     o.insert(QStringLiteral("showInputDevices"), m_showInputDevices);
@@ -128,12 +139,30 @@ void ConfigStore::save() const
     }
     {
         QJsonObject names;
+        for (auto it = m_deviceNames.begin(); it != m_deviceNames.end(); ++it) {
+            const QString name = it.value().trimmed();
+            if (!it.key().isEmpty() && !name.isEmpty())
+                names.insert(it.key(), name);
+        }
+        o.insert(QStringLiteral("deviceNames"), names);
+    }
+    {
+        QJsonObject names;
         for (const auto &id : m_hiddenDevices) {
-            const QString name = m_hiddenDeviceNames.value(id).trimmed();
+            const QString name = m_deviceNames.value(id).trimmed();
             if (!name.isEmpty())
                 names.insert(id, name);
         }
         o.insert(QStringLiteral("hiddenDeviceNames"), names);
+    }
+    {
+        QJsonObject colors;
+        for (auto it = m_deviceColors.begin(); it != m_deviceColors.end(); ++it) {
+            const QString colorKey = it.value().trimmed();
+            if (!it.key().isEmpty() && !colorKey.isEmpty())
+                colors.insert(it.key(), colorKey);
+        }
+        o.insert(QStringLiteral("deviceColors"), colors);
     }
     {
         QJsonArray arr;
@@ -256,19 +285,24 @@ QStringList ConfigStore::hiddenDevices() const
 
 QString ConfigStore::hiddenDeviceName(const QString &deviceId) const
 {
-    return m_hiddenDeviceNames.value(deviceId);
+    return m_deviceNames.value(deviceId);
+}
+
+QString ConfigStore::deviceName(const QString &deviceId) const
+{
+    return m_deviceNames.value(deviceId);
 }
 
 void ConfigStore::rememberDeviceName(const QString &deviceId, const QString &deviceName)
 {
-    if (deviceId.isEmpty() || !m_hiddenDevices.contains(deviceId))
+    if (deviceId.isEmpty())
         return;
     const QString trimmed = deviceName.trimmed();
     if (trimmed.isEmpty())
         return;
-    if (m_hiddenDeviceNames.value(deviceId) == trimmed)
+    if (m_deviceNames.value(deviceId) == trimmed)
         return;
-    m_hiddenDeviceNames.insert(deviceId, trimmed);
+    m_deviceNames.insert(deviceId, trimmed);
     emit changed();
 }
 
@@ -281,10 +315,8 @@ void ConfigStore::setDeviceHidden(const QString &deviceId, bool hidden)
         return;
     if (hidden)
         m_hiddenDevices.insert(deviceId);
-    else {
+    else
         m_hiddenDevices.remove(deviceId);
-        m_hiddenDeviceNames.remove(deviceId);
-    }
     emit changed();
 }
 
@@ -293,8 +325,8 @@ bool ConfigStore::remapDeviceId(const QString &oldDeviceId, const QString &newDe
     if (oldDeviceId.isEmpty() || newDeviceId.isEmpty() || oldDeviceId == newDeviceId) {
         if (!newDeviceId.isEmpty()) {
             const QString trimmed = newDeviceName.trimmed();
-            if (!trimmed.isEmpty() && m_hiddenDevices.contains(newDeviceId) && m_hiddenDeviceNames.value(newDeviceId) != trimmed) {
-                m_hiddenDeviceNames.insert(newDeviceId, trimmed);
+            if (!trimmed.isEmpty() && m_deviceNames.value(newDeviceId) != trimmed) {
+                m_deviceNames.insert(newDeviceId, trimmed);
                 emit changed();
                 return true;
             }
@@ -303,8 +335,8 @@ bool ConfigStore::remapDeviceId(const QString &oldDeviceId, const QString &newDe
     }
 
     bool didChange = false;
-    const QString oldName = m_hiddenDeviceNames.value(oldDeviceId).trimmed();
-    const QString existingNewName = m_hiddenDeviceNames.value(newDeviceId).trimmed();
+    const QString oldName = m_deviceNames.value(oldDeviceId).trimmed();
+    const QString existingNewName = m_deviceNames.value(newDeviceId).trimmed();
     const QString preferredName = !newDeviceName.trimmed().isEmpty() ? newDeviceName.trimmed()
                                 : (!existingNewName.isEmpty() ? existingNewName : oldName);
 
@@ -314,10 +346,19 @@ bool ConfigStore::remapDeviceId(const QString &oldDeviceId, const QString &newDe
             m_hiddenDevices.insert(newDeviceId);
         }
     }
-    if (m_hiddenDeviceNames.remove(oldDeviceId) > 0)
+    if (m_deviceNames.remove(oldDeviceId) > 0)
         didChange = true;
-    if (m_hiddenDevices.contains(newDeviceId) && !preferredName.isEmpty() && m_hiddenDeviceNames.value(newDeviceId) != preferredName) {
-        m_hiddenDeviceNames.insert(newDeviceId, preferredName);
+    if (!preferredName.isEmpty() && m_deviceNames.value(newDeviceId) != preferredName) {
+        m_deviceNames.insert(newDeviceId, preferredName);
+        didChange = true;
+    }
+
+    const QString oldColor = m_deviceColors.value(oldDeviceId).trimmed();
+    const QString newColor = m_deviceColors.value(newDeviceId).trimmed();
+    if (m_deviceColors.remove(oldDeviceId) > 0)
+        didChange = true;
+    if (!oldColor.isEmpty() && newColor.isEmpty()) {
+        m_deviceColors.insert(newDeviceId, oldColor);
         didChange = true;
     }
 
@@ -366,6 +407,42 @@ void ConfigStore::setDeviceOrder(const QStringList &order)
         return;
     m_deviceOrder = order;
     emit changed();
+}
+
+QString ConfigStore::deviceColor(const QString &deviceId) const
+{
+    return m_deviceColors.value(deviceId);
+}
+
+void ConfigStore::setDeviceColor(const QString &deviceId, const QString &colorKey)
+{
+    if (deviceId.isEmpty())
+        return;
+    const QString trimmed = colorKey.trimmed();
+    if (trimmed.isEmpty()) {
+        if (m_deviceColors.remove(deviceId) == 0)
+            return;
+        emit changed();
+        return;
+    }
+    if (m_deviceColors.value(deviceId) == trimmed)
+        return;
+    m_deviceColors.insert(deviceId, trimmed);
+    emit changed();
+}
+
+QStringList ConfigStore::rememberedDeviceIds() const
+{
+    QSet<QString> ids = m_hiddenDevices;
+    for (auto it = m_deviceNames.begin(); it != m_deviceNames.end(); ++it) {
+        if (!it.key().isEmpty())
+            ids.insert(it.key());
+    }
+    for (auto it = m_deviceColors.begin(); it != m_deviceColors.end(); ++it) {
+        if (!it.key().isEmpty())
+            ids.insert(it.key());
+    }
+    return QStringList(ids.begin(), ids.end());
 }
 
 bool ConfigStore::isProcessHiddenGlobal(const QString &exePath) const

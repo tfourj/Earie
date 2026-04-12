@@ -204,6 +204,7 @@ bool AppController::init()
     connect(m_audio, &AudioBackend::defaultDeviceChanged, this, &AppController::updateTrayIcon);
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, &AppController::rebuildHiddenMenus);
     connect(m_audio, &AudioBackend::devicesChanged, this, [this]() { emit hiddenItemsChanged(); });
+    connect(m_audio, &AudioBackend::devicesChanged, this, [this]() { emit deviceAppearanceChanged(); });
     connect(m_audio, &AudioBackend::knownProcessesChanged, this, [this]() { emit hiddenItemsChanged(); });
 
     // Warm a small icon set once after the first snapshot so background start has icons ready.
@@ -472,6 +473,62 @@ QVariantList AppController::hiddenProcessesPerDeviceSnapshot() const
     }
 
     return out;
+}
+
+QVariantList AppController::deviceAppearanceSnapshot() const
+{
+    QVariantList out;
+    if (!m_audio || !m_config)
+        return out;
+
+    const auto devicesAll = m_audio->devicesSnapshotAll();
+    QSet<QString> seen;
+    out.reserve(devicesAll.size());
+    for (const auto &d : devicesAll) {
+        if (d.id.isEmpty())
+            continue;
+        seen.insert(d.id);
+        QVariantMap m;
+        m.insert(QStringLiteral("deviceId"), d.id);
+        m.insert(QStringLiteral("name"), deviceMenuLabel(d.name.isEmpty() ? d.id : d.name, d.direction));
+        m.insert(QStringLiteral("connected"), true);
+        m.insert(QStringLiteral("isInput"), d.direction == DeviceDirection::Input);
+        m.insert(QStringLiteral("colorKey"), m_config->deviceColor(d.id));
+        out.append(m);
+    }
+
+    const auto rememberedIds = m_config->rememberedDeviceIds();
+    for (const auto &deviceId : rememberedIds) {
+        if (deviceId.isEmpty() || seen.contains(deviceId))
+            continue;
+        const QString rememberedName = m_config->deviceName(deviceId).trimmed();
+        if (rememberedName.isEmpty() && m_config->deviceColor(deviceId).trimmed().isEmpty())
+            continue;
+        QVariantMap m;
+        m.insert(QStringLiteral("deviceId"), deviceId);
+        m.insert(QStringLiteral("name"), rememberedName.isEmpty() ? deviceId : rememberedName);
+        m.insert(QStringLiteral("connected"), false);
+        m.insert(QStringLiteral("isInput"), false);
+        m.insert(QStringLiteral("colorKey"), m_config->deviceColor(deviceId));
+        out.append(m);
+    }
+
+    return out;
+}
+
+QString AppController::deviceColor(const QString &deviceId) const
+{
+    return m_config ? m_config->deviceColor(deviceId) : QString();
+}
+
+void AppController::setDeviceColor(const QString &deviceId, const QString &colorKey)
+{
+    if (!m_config || deviceId.isEmpty())
+        return;
+    m_config->setDeviceColor(deviceId, colorKey);
+    if (m_audio)
+        m_audio->setDeviceColorKey(deviceId, m_config->deviceColor(deviceId));
+    emit deviceAppearanceChanged();
 }
 
 void AppController::popupOpened()

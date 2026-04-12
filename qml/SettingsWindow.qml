@@ -13,6 +13,7 @@ Item {
     property var hiddenDevices: []
     property var globalProcesses: []
     property var perDeviceProcesses: []
+    property var deviceAppearances: []
     property var perDeviceExpandedMap: ({})
 
     readonly property int contentHeightHint: Math.ceil(
@@ -36,6 +37,12 @@ Item {
                 nextMap[id] = true
         }
         perDeviceExpandedMap = nextMap
+    }
+
+    function refreshDeviceAppearances() {
+        if (!appController)
+            return
+        deviceAppearances = appController.deviceAppearanceSnapshot() || []
     }
 
     function isPerDeviceExpanded(id) {
@@ -83,13 +90,17 @@ Item {
         }
     }
 
-    Component.onCompleted: refreshHiddenModels()
+    Component.onCompleted: {
+        refreshHiddenModels()
+        refreshDeviceAppearances()
+    }
     onCurrentTabChanged: if (appController) appController.requestSettingsRelayout()
     onContentHeightHintChanged: if (appController) appController.requestSettingsRelayout()
 
     Connections {
         target: appController
         function onHiddenItemsChanged() { refreshHiddenModels() }
+        function onDeviceAppearanceChanged() { refreshDeviceAppearances() }
     }
 
     Styles.Theme { id: theme }
@@ -284,6 +295,58 @@ Item {
 
         MouseArea {
             id: actionMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+    }
+
+    component DeviceColorButton: Rectangle {
+        required property string colorKey
+        required property string label
+        required property bool selected
+        required property color swatchColor
+        signal clicked()
+
+        radius: 10
+        implicitHeight: 30
+        implicitWidth: colorRow.implicitWidth + 18
+        color: selected ? theme.deviceCardHover(colorKey) : theme.cellBg
+        border.width: 1
+        border.color: selected ? theme.deviceBorder(colorKey, true) : Qt.rgba(1, 1, 1, 0.08)
+
+        Row {
+            id: colorRow
+            anchors.centerIn: parent
+            spacing: 8
+
+            Rectangle {
+                width: 12
+                height: 12
+                radius: 6
+                color: swatchColor
+                border.width: colorKey === "" ? 1 : 0
+                border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 6
+                    height: 2
+                    radius: 1
+                    color: colorKey === "" ? theme.textMuted : "transparent"
+                }
+            }
+
+            Text {
+                color: selected ? theme.text : theme.textMuted
+                font.pixelSize: 11
+                font.bold: selected
+                text: label
+            }
+        }
+
+        MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -571,6 +634,98 @@ Item {
                                     label: "Earie Black"
                                     selected: appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1
                                     onClicked: if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
+                                }
+                            }
+                        }
+
+                        SectionCard {
+                            Text {
+                                color: theme.text
+                                font.pixelSize: 13
+                                text: "Device colors"
+                            }
+
+                            Text {
+                                color: theme.textMuted
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                text: "Pick a preset tint for each device card. Saved colors remain available for remembered disconnected devices."
+                            }
+
+                            Text {
+                                visible: deviceAppearances.length === 0
+                                color: theme.textMuted
+                                font.pixelSize: 11
+                                text: "(No devices)"
+                            }
+
+                            Repeater {
+                                model: deviceAppearances
+                                delegate: Rectangle {
+                                    property var deviceEntry: modelData
+                                    width: parent.width
+                                    radius: 12
+                                    color: theme.deviceCardBg(deviceEntry.colorKey || "")
+                                    border.width: 1
+                                    border.color: theme.deviceBorder(deviceEntry.colorKey || "", false)
+                                    implicitHeight: deviceColorColumn.implicitHeight + 20
+
+                                    Column {
+                                        id: deviceColorColumn
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 10
+
+                                        RowLayout {
+                                            width: parent.width
+                                            spacing: 8
+
+                                            Text {
+                                                Layout.fillWidth: true
+                                                color: theme.text
+                                                font.pixelSize: 12
+                                                text: deviceEntry.name
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Rectangle {
+                                                visible: deviceEntry.connected === false
+                                                radius: 8
+                                                color: Qt.rgba(1, 1, 1, 0.08)
+                                                border.width: 1
+                                                border.color: Qt.rgba(1, 1, 1, 0.10)
+                                                Layout.preferredHeight: 18
+                                                Layout.preferredWidth: 76
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    color: theme.textMuted
+                                                    font.pixelSize: 10
+                                                    text: "Disconnected"
+                                                }
+                                            }
+                                        }
+
+                                        Flow {
+                                            width: parent.width
+                                            spacing: 8
+
+                                            Repeater {
+                                                model: theme.paletteModel()
+                                                delegate: DeviceColorButton {
+                                                    colorKey: modelData.key
+                                                    label: modelData.label
+                                                    swatchColor: modelData.color
+                                                    selected: (modelData.key || "") === (deviceEntry.colorKey || "")
+                                                    onClicked: {
+                                                        if (!appController)
+                                                            return
+                                                        appController.setDeviceColor(deviceEntry.deviceId, modelData.key || "")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

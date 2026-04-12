@@ -243,8 +243,9 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
             defMuted = ds.muted;
         }
 
-        if (m_config && m_config->isDeviceHidden(ds.id)) {
+        if (m_config)
             m_config->rememberDeviceName(ds.id, ds.name);
+        if (m_config && m_config->isDeviceHidden(ds.id)) {
             continue;
         }
 
@@ -265,6 +266,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         }
 
         dev->setName(ds.name);
+        dev->setColorKey(m_config ? m_config->deviceColor(ds.id) : QString());
         dev->setDirection(ds.direction);
         dev->setIsDefault(ds.isDefault);
         dev->setVolumeInternal(ds.volume);
@@ -684,6 +686,12 @@ void AudioBackend::setSessionMuted(const QString &deviceId, quint32 pid, const Q
         QMetaObject::invokeMethod(m_worker, "setSessionMuted", Qt::QueuedConnection,
                                   Q_ARG(QString, deviceId), Q_ARG(quint32, pid),
                                   Q_ARG(QString, exePath), Q_ARG(bool, muted));
+}
+
+void AudioBackend::setDeviceColorKey(const QString &deviceId, const QString &colorKey)
+{
+    if (auto *d = m_deviceById.value(deviceId, nullptr))
+        d->setColorKey(colorKey);
 }
 
 void AudioBackend::rebuildMenusIfChanged(bool devicesChangedNow, bool processesChangedNow, bool defaultDeviceChangedNow)

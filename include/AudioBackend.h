@@ -62,6 +62,7 @@ public:
     QVector<ProcessSnapshot> knownProcessesForDeviceSnapshot(const QString &deviceId) const;
     QVector<ProcessSnapshot> knownProcessesForDeviceSnapshotAll(const QString &deviceId) const;
     void preloadIconsForActiveSessions(int maxCount = 64);
+    void setDeviceColorKey(const QString &deviceId, const QString &colorKey);
 
     // Called by QML via AudioDevice/AudioSession objects.
     void setDeviceVolume(const QString &deviceId, double volume01);

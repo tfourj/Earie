@@ -29,6 +29,14 @@ void AudioDevice::setName(const QString &n)
     emit changed();
 }
 
+void AudioDevice::setColorKey(const QString &colorKey)
+{
+    if (m_colorKey == colorKey)
+        return;
+    m_colorKey = colorKey;
+    emit changed();
+}
+
 void AudioDevice::setDirection(DeviceDirection direction)
 {
     if (m_direction == direction)

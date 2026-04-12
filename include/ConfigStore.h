@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QSet>
 #include <QString>
+#include <QStringList>
 
 class ConfigStore final : public QObject
 {
@@ -55,10 +56,14 @@ public:
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
     QString hiddenDeviceName(const QString &deviceId) const;
+    QString deviceName(const QString &deviceId) const;
     void rememberDeviceName(const QString &deviceId, const QString &deviceName);
     bool remapDeviceId(const QString &oldDeviceId, const QString &newDeviceId, const QString &newDeviceName = QString());
     QStringList deviceOrder() const { return m_deviceOrder; }
     void setDeviceOrder(const QStringList &order);
+    QString deviceColor(const QString &deviceId) const;
+    void setDeviceColor(const QString &deviceId, const QString &colorKey);
+    QStringList rememberedDeviceIds() const;
 
     bool isProcessHiddenGlobal(const QString &exePath) const;
     void setProcessHiddenGlobal(const QString &exePath, bool hidden);
@@ -85,7 +90,8 @@ private:
     TrayIconMode m_trayIconMode = TrayIconMode::White;
 
     QSet<QString> m_hiddenDevices;
-    QHash<QString, QString> m_hiddenDeviceNames; // deviceId -> last known name (hidden devices)
+    QHash<QString, QString> m_deviceNames; // deviceId -> last known name
+    QHash<QString, QString> m_deviceColors; // deviceId -> palette key
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
 
