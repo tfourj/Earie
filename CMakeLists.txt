@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(Earie VERSION 1.3.0 LANGUAGES CXX)
 
 set(TARGET_NAME Earie)
-set(EARIE_BETA "1" CACHE STRING "Beta build label. Use 0 for stable, or N for -betaN.")
+set(EARIE_BETA "2" CACHE STRING "Beta build label. Use 0 for stable, or N for -betaN.")
 
 if (EARIE_BETA STREQUAL "0")
     set(EARIE_DISPLAY_VERSION "${PROJECT_VERSION}")
