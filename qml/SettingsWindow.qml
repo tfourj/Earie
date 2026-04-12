@@ -623,9 +623,9 @@ Item {
                                     property var deviceEntry: modelData
                                     width: parent.width
                                     radius: 12
-                                    color: theme.deviceCardBg(deviceEntry.colorKey || "")
+                                    color: theme.cellBg
                                     border.width: 1
-                                    border.color: theme.deviceBorder(deviceEntry.colorKey || "", false)
+                                    border.color: Qt.rgba(1, 1, 1, 0.08)
                                     implicitHeight: deviceColorColumn.implicitHeight + 20
 
                                     Column {

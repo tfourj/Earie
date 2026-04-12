@@ -100,6 +100,7 @@ Item {
                 delegate: SessionRow {
                     width: sessionsList.width
                     sessionObject: model.sessionObject
+                    colorKey: root.colorKey
                 }
             }
         }

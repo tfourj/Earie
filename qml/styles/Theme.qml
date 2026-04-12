@@ -39,16 +39,16 @@ QtObject {
 
     function presetColor(key) {
         switch (key) {
-        case "rose": return "#D86A84"
-        case "coral": return "#D9825B"
-        case "amber": return "#C89A32"
-        case "lime": return "#7FA443"
-        case "mint": return "#46A182"
-        case "teal": return "#3D95A5"
-        case "blue": return "#4B84D9"
-        case "indigo": return "#6C72D8"
-        case "plum": return "#9A6ACB"
-        case "slate": return "#6E8195"
+        case "rose": return Qt.rgba(0xD8 / 255, 0x6A / 255, 0x84 / 255, 1)
+        case "coral": return Qt.rgba(0xD9 / 255, 0x82 / 255, 0x5B / 255, 1)
+        case "amber": return Qt.rgba(0xC8 / 255, 0x9A / 255, 0x32 / 255, 1)
+        case "lime": return Qt.rgba(0x7F / 255, 0xA4 / 255, 0x43 / 255, 1)
+        case "mint": return Qt.rgba(0x46 / 255, 0xA1 / 255, 0x82 / 255, 1)
+        case "teal": return Qt.rgba(0x3D / 255, 0x95 / 255, 0xA5 / 255, 1)
+        case "blue": return Qt.rgba(0x4B / 255, 0x84 / 255, 0xD9 / 255, 1)
+        case "indigo": return Qt.rgba(0x6C / 255, 0x72 / 255, 0xD8 / 255, 1)
+        case "plum": return Qt.rgba(0x9A / 255, 0x6A / 255, 0xCB / 255, 1)
+        case "slate": return Qt.rgba(0x6E / 255, 0x81 / 255, 0x95 / 255, 1)
         default: return accent
         }
     }
@@ -74,11 +74,11 @@ QtObject {
     }
 
     function deviceCardBg(colorKey) {
-        return colorKey ? blend(cellBg, presetColor(colorKey), 0.20) : cellBg
+        return colorKey ? blend(cellBg, presetColor(colorKey), 0.48) : cellBg
     }
 
     function deviceCardHover(colorKey) {
-        return colorKey ? blend(cellHover, presetColor(colorKey), 0.24) : cellHover
+        return colorKey ? blend(cellHover, presetColor(colorKey), 0.56) : cellHover
     }
 
     function deviceBorder(colorKey, isDefault) {
@@ -109,5 +109,17 @@ QtObject {
         if (!colorKey)
             return emphasized ? accent : textMuted
         return emphasized ? text : blend(textMuted, presetColor(colorKey), 0.35)
+    }
+
+    function sessionRowBg(colorKey) {
+        return colorKey ? blend(cellBg, presetColor(colorKey), 0.34) : "transparent"
+    }
+
+    function sessionRowHover(colorKey) {
+        return colorKey ? blend(cellHover, presetColor(colorKey), 0.42) : cellHover
+    }
+
+    function sessionRowBorder(colorKey) {
+        return colorKey ? withAlpha(blend(divider, presetColor(colorKey), 0.46), 0.92) : "transparent"
     }
 }

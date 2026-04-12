@@ -8,6 +8,7 @@ import "../styles" as Styles
 Item {
     id: root
     property var sessionObject
+    property string colorKey: ""
     readonly property real peak01: sessionObject ? sessionObject.peak : 0
     property bool _wheelAdjusting: false
 
@@ -41,10 +42,10 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        // Slight inset so the hover highlight doesn't butt up against the cell edges.
-        anchors.margins: 1
         radius: 10
-        color: hover.hovered ? theme.cellHover : "transparent"
+        color: hover.hovered ? theme.sessionRowHover(root.colorKey) : theme.sessionRowBg(root.colorKey)
+        border.width: root.colorKey ? 1 : 0
+        border.color: theme.sessionRowBorder(root.colorKey)
     }
 
     RowLayout {
@@ -133,7 +134,7 @@ Item {
 
             background: Rectangle {
                 radius: 8
-                color: muteBtn.hovered ? "#2E3136" : "transparent"
+                color: muteBtn.hovered ? theme.sessionRowHover(root.colorKey) : "transparent"
             }
             onClicked: if (sessionObject) sessionObject.toggleMute()
         }
