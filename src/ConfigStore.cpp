@@ -48,6 +48,10 @@ void ConfigStore::load()
     m_startWithWindows = o.value(QStringLiteral("startWithWindows")).toBool(false);
     m_useNativeTrayIcon = o.value(QStringLiteral("useNativeTrayIcon")).toBool(false);
     m_deviceColorOpacity = qBound(0.0, o.value(QStringLiteral("deviceColorOpacity")).toDouble(1.0), 1.0);
+    const QString deviceColorMode = o.value(QStringLiteral("deviceColorMode")).toString(QStringLiteral("pill"));
+    m_deviceColorMode = deviceColorMode == QLatin1String("slider")
+        ? DeviceColorMode::Slider
+        : DeviceColorMode::Pill;
     const QString trayMode = o.value(QStringLiteral("trayIconMode")).toString();
     if (trayMode == QLatin1String("black"))
         m_trayIconMode = TrayIconMode::Black;
@@ -131,6 +135,8 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("startWithWindows"), m_startWithWindows);
     o.insert(QStringLiteral("useNativeTrayIcon"), m_useNativeTrayIcon);
     o.insert(QStringLiteral("deviceColorOpacity"), m_deviceColorOpacity);
+    o.insert(QStringLiteral("deviceColorMode"),
+        m_deviceColorMode == DeviceColorMode::Slider ? QStringLiteral("slider") : QStringLiteral("pill"));
     o.insert(QStringLiteral("trayIconMode"),
         m_trayIconMode == TrayIconMode::Black ? QStringLiteral("black") : QStringLiteral("white"));
 
@@ -274,6 +280,14 @@ void ConfigStore::setDeviceColorOpacity(double v)
     if (qFuzzyCompare(m_deviceColorOpacity, clamped))
         return;
     m_deviceColorOpacity = clamped;
+    emit changed();
+}
+
+void ConfigStore::setDeviceColorMode(DeviceColorMode mode)
+{
+    if (m_deviceColorMode == mode)
+        return;
+    m_deviceColorMode = mode;
     emit changed();
 }
 

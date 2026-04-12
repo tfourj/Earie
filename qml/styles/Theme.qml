@@ -10,6 +10,8 @@ QtObject {
     readonly property color accent: "#3A96FF"
     readonly property color trackInactive: "#3A3D43"
     readonly property color trackActive: "#3A96FF"
+    readonly property int deviceColorModePill: 0
+    readonly property int deviceColorModeSlider: 1
 
     readonly property int radius: 14
     readonly property int cellRadius: 12
@@ -79,15 +81,25 @@ QtObject {
         return Math.max(0.0, Math.min(1.0, appController.deviceColorOpacity))
     }
 
+    function usesDeviceSliderAccents() {
+        return appController && appController.deviceColorMode === deviceColorModeSlider
+    }
+
     function deviceCardBg(colorKey) {
+        if (usesDeviceSliderAccents())
+            return cellBg
         return colorKey ? blend(cellBg, presetColor(colorKey), 0.48 * deviceTintOpacity()) : cellBg
     }
 
     function deviceCardHover(colorKey) {
+        if (usesDeviceSliderAccents())
+            return cellHover
         return colorKey ? blend(cellHover, presetColor(colorKey), 0.56 * deviceTintOpacity()) : cellHover
     }
 
     function deviceBorder(colorKey, isDefault) {
+        if (usesDeviceSliderAccents())
+            return isDefault ? accent : divider
         if (!colorKey)
             return isDefault ? accent : divider
         return isDefault
@@ -96,6 +108,11 @@ QtObject {
     }
 
     function deviceBadgeBg(colorKey, emphasized) {
+        if (usesDeviceSliderAccents()) {
+            return emphasized
+                ? Qt.rgba(accent.r, accent.g, accent.b, 0.18)
+                : Qt.rgba(1, 1, 1, 0.08)
+        }
         if (!colorKey)
             return emphasized
                 ? Qt.rgba(accent.r, accent.g, accent.b, 0.18)
@@ -104,6 +121,11 @@ QtObject {
     }
 
     function deviceBadgeBorder(colorKey, emphasized) {
+        if (usesDeviceSliderAccents()) {
+            return emphasized
+                ? Qt.rgba(accent.r, accent.g, accent.b, 0.55)
+                : Qt.rgba(1, 1, 1, 0.12)
+        }
         if (!colorKey)
             return emphasized
                 ? Qt.rgba(accent.r, accent.g, accent.b, 0.55)
@@ -112,20 +134,32 @@ QtObject {
     }
 
     function deviceBadgeText(colorKey, emphasized) {
+        if (usesDeviceSliderAccents())
+            return emphasized ? accent : textMuted
         if (!colorKey)
             return emphasized ? accent : textMuted
         return emphasized ? text : blend(textMuted, presetColor(colorKey), 0.35 * deviceTintOpacity())
     }
 
     function sessionRowBg(colorKey) {
+        if (usesDeviceSliderAccents())
+            return "transparent"
         return colorKey ? blend(cellBg, presetColor(colorKey), 0.34 * deviceTintOpacity()) : "transparent"
     }
 
     function sessionRowHover(colorKey) {
+        if (usesDeviceSliderAccents())
+            return cellHover
         return colorKey ? blend(cellHover, presetColor(colorKey), 0.42 * deviceTintOpacity()) : cellHover
     }
 
     function sessionRowBorder(colorKey) {
+        if (usesDeviceSliderAccents())
+            return "transparent"
         return colorKey ? withAlpha(blend(divider, presetColor(colorKey), 0.46 * deviceTintOpacity()), 0.92) : "transparent"
+    }
+
+    function deviceSliderAccent(colorKey) {
+        return usesDeviceSliderAccents() ? deviceAccent(colorKey) : accent
     }
 }

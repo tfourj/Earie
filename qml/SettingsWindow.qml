@@ -607,7 +607,23 @@ Item {
                                 color: theme.textMuted
                                 font.pixelSize: 11
                                 wrapMode: Text.WordWrap
-                                text: "Pick a preset tint for each device card. Saved colors remain available for remembered disconnected devices."
+                                text: "Choose how device colors are applied, then pick a preset for each device. Saved colors remain available for remembered disconnected devices."
+                            }
+
+                            ToggleRow {
+                                width: parent.width
+                                label: "Slider accents"
+                                description: checked
+                                    ? "Selected device colors are applied to the device and session sliders, while device pills stay neutral."
+                                    : "Selected device colors tint the device and session pill backgrounds, while sliders use the default accent."
+                                checked: appController ? appController.deviceColorMode === theme.deviceColorModeSlider : false
+                                onToggled: {
+                                    if (!appController)
+                                        return
+                                    appController.deviceColorMode = appController.deviceColorMode === theme.deviceColorModeSlider
+                                        ? theme.deviceColorModePill
+                                        : theme.deviceColorModeSlider
+                                }
                             }
 
                             Column {
@@ -617,12 +633,14 @@ Item {
                                 Text {
                                     color: theme.text
                                     font.pixelSize: 12
-                                    text: "Global tint opacity"
+                                    text: "Pill tint opacity"
                                 }
 
                                 RowLayout {
                                     width: parent.width
                                     spacing: 12
+                                    enabled: appController ? appController.deviceColorMode === theme.deviceColorModePill : true
+                                    opacity: enabled ? 1.0 : 0.55
 
                                     Styles.SliderStyle {
                                         id: deviceOpacitySlider

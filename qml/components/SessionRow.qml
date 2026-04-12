@@ -149,7 +149,7 @@ Item {
             Styles.SliderStyle {
                 id: slider
                 anchors.fill: parent
-                accentColor: (sessionObject && sessionObject.muted) ? "#6A6F78" : theme.accent
+                accentColor: (sessionObject && sessionObject.muted) ? "#6A6F78" : theme.deviceSliderAccent(root.colorKey)
                 inactiveColor: (sessionObject && sessionObject.muted) ? "#3A3D44" : theme.trackInactive
                 onMoved: if (sessionObject) sessionObject.setVolume(value)
 

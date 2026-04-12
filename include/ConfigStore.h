@@ -14,6 +14,8 @@ public:
     Q_ENUM(Mode)
     enum class TrayIconMode { White, Black };
     Q_ENUM(TrayIconMode)
+    enum class DeviceColorMode { Pill, Slider };
+    Q_ENUM(DeviceColorMode)
 
     explicit ConfigStore(QObject *parent = nullptr);
 
@@ -65,6 +67,8 @@ public:
     void setDeviceColor(const QString &deviceId, const QString &colorKey);
     double deviceColorOpacity() const { return m_deviceColorOpacity; }
     void setDeviceColorOpacity(double v);
+    DeviceColorMode deviceColorMode() const { return m_deviceColorMode; }
+    void setDeviceColorMode(DeviceColorMode mode);
     QStringList rememberedDeviceIds() const;
 
     bool isProcessHiddenGlobal(const QString &exePath) const;
@@ -95,6 +99,7 @@ private:
     QHash<QString, QString> m_deviceNames; // deviceId -> last known name
     QHash<QString, QString> m_deviceColors; // deviceId -> palette key
     double m_deviceColorOpacity = 1.0;
+    DeviceColorMode m_deviceColorMode = DeviceColorMode::Pill;
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
 

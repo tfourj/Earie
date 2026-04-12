@@ -185,6 +185,7 @@ bool AppController::init()
     m_useNativeTrayIcon = m_config->useNativeTrayIcon();
     m_trayIconMode = static_cast<int>(m_config->trayIconMode());
     m_deviceColorOpacity = m_config->deviceColorOpacity();
+    m_deviceColorMode = static_cast<int>(m_config->deviceColorMode());
     setFileLoggingEnabled(m_debugMode);
     applyStartWithWindows(m_startWithWindows);
 
@@ -635,6 +636,19 @@ void AppController::setDeviceColorOpacity(double v)
     if (m_config)
         m_config->setDeviceColorOpacity(m_deviceColorOpacity);
     emit deviceColorOpacityChanged();
+}
+
+void AppController::setDeviceColorMode(int mode)
+{
+    const int clamped = qBound(static_cast<int>(ConfigStore::DeviceColorMode::Pill),
+                               mode,
+                               static_cast<int>(ConfigStore::DeviceColorMode::Slider));
+    if (m_deviceColorMode == clamped)
+        return;
+    m_deviceColorMode = clamped;
+    if (m_config)
+        m_config->setDeviceColorMode(static_cast<ConfigStore::DeviceColorMode>(m_deviceColorMode));
+    emit deviceColorModeChanged();
 }
 
 void AppController::openConfigFolder()
