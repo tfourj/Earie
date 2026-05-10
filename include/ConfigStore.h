@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QSet>
 #include <QString>
+#include <QStringList>
 
 class ConfigStore final : public QObject
 {
@@ -13,6 +14,8 @@ public:
     Q_ENUM(Mode)
     enum class TrayIconMode { White, Black };
     Q_ENUM(TrayIconMode)
+    enum class DeviceColorMode { Pill, Slider };
+    Q_ENUM(DeviceColorMode)
 
     explicit ConfigStore(QObject *parent = nullptr);
 
@@ -26,6 +29,12 @@ public:
 
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
+
+    bool showInputDevices() const { return m_showInputDevices; }
+    void setShowInputDevices(bool v);
+
+    bool showInputApplications() const { return m_showInputApplications; }
+    void setShowInputApplications(bool v);
 
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
@@ -49,10 +58,18 @@ public:
     void setDeviceHidden(const QString &deviceId, bool hidden);
     QStringList hiddenDevices() const;
     QString hiddenDeviceName(const QString &deviceId) const;
+    QString deviceName(const QString &deviceId) const;
     void rememberDeviceName(const QString &deviceId, const QString &deviceName);
     bool remapDeviceId(const QString &oldDeviceId, const QString &newDeviceId, const QString &newDeviceName = QString());
     QStringList deviceOrder() const { return m_deviceOrder; }
     void setDeviceOrder(const QStringList &order);
+    QString deviceColor(const QString &deviceId) const;
+    void setDeviceColor(const QString &deviceId, const QString &colorKey);
+    double deviceColorOpacity() const { return m_deviceColorOpacity; }
+    void setDeviceColorOpacity(double v);
+    DeviceColorMode deviceColorMode() const { return m_deviceColorMode; }
+    void setDeviceColorMode(DeviceColorMode mode);
+    QStringList rememberedDeviceIds() const;
 
     bool isProcessHiddenGlobal(const QString &exePath) const;
     void setProcessHiddenGlobal(const QString &exePath, bool hidden);
@@ -69,6 +86,8 @@ signals:
 private:
     Mode m_mode = Mode::DefaultDeviceOnly;
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
+    bool m_showInputApplications = true;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_debugMode = false;
@@ -77,7 +96,10 @@ private:
     TrayIconMode m_trayIconMode = TrayIconMode::White;
 
     QSet<QString> m_hiddenDevices;
-    QHash<QString, QString> m_hiddenDeviceNames; // deviceId -> last known name (hidden devices)
+    QHash<QString, QString> m_deviceNames; // deviceId -> last known name
+    QHash<QString, QString> m_deviceColors; // deviceId -> palette key
+    double m_deviceColorOpacity = 1.0;
+    DeviceColorMode m_deviceColorMode = DeviceColorMode::Pill;
     QSet<QString> m_hiddenProcessesGlobal; // exePath
     QHash<QString, QSet<QString>> m_hiddenProcessesPerDevice; // deviceId -> exePaths
 

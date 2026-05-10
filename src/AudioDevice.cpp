@@ -5,11 +5,13 @@
 
 #include <QtGlobal>
 
-AudioDevice::AudioDevice(AudioBackend *backend, const QString &id, const QString &name, QObject *parent)
+AudioDevice::AudioDevice(AudioBackend *backend, const QString &id, const QString &name,
+                         DeviceDirection direction, QObject *parent)
     : QObject(parent)
     , m_backend(backend)
     , m_id(id)
     , m_name(name)
+    , m_direction(direction)
 {
     m_sessions = new SessionListModel(this);
 
@@ -24,6 +26,22 @@ void AudioDevice::setName(const QString &n)
     if (m_name == n)
         return;
     m_name = n;
+    emit changed();
+}
+
+void AudioDevice::setColorKey(const QString &colorKey)
+{
+    if (m_colorKey == colorKey)
+        return;
+    m_colorKey = colorKey;
+    emit changed();
+}
+
+void AudioDevice::setDirection(DeviceDirection direction)
+{
+    if (m_direction == direction)
+        return;
+    m_direction = direction;
     emit changed();
 }
 

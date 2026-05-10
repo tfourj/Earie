@@ -7,6 +7,7 @@ import "../styles" as Styles
 Item {
     id: root
     property var deviceObject
+    property string colorKey: deviceObject ? deviceObject.colorKey : ""
     readonly property real peak01: deviceObject ? deviceObject.peak : 0
     property bool _wheelAdjusting: false
 
@@ -45,7 +46,7 @@ Item {
             Styles.SliderStyle {
                 id: slider
                 anchors.fill: parent
-                accentColor: (deviceObject && deviceObject.muted) ? "#6A6F78" : theme.accent
+                accentColor: (deviceObject && deviceObject.muted) ? "#6A6F78" : theme.deviceSliderAccent(root.colorKey)
                 inactiveColor: (deviceObject && deviceObject.muted) ? "#3A3D44" : theme.trackInactive
                 // Avoid jitter: while dragging, slider owns its own value, but we still
                 // send live volume updates for audible feedback.

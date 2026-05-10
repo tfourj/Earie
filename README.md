@@ -24,6 +24,7 @@
 - Hide processes
 - Sort devices
 - Show only the default device
+- Optionally manage input devices
 
 ## Download
 
@@ -49,13 +50,20 @@ The app starts tray-only. Left-click the tray icon toggles the flyout; right-cli
 Stored at:
 - `%APPDATA%/Earie/config.json`
 
-Schema (v1):
+Schema (v2):
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "mode": "default",                // "default" | "all"
   "showSystemSessions": false,      // default false
+  "showInputDevices": false,        // default false
+  "deviceNames": {
+    "<deviceId>": "Speakers"
+  },
+  "deviceColors": {
+    "<deviceId>": "teal"
+  },
   "hiddenDevices": ["<deviceId>"],
   "hiddenProcessesGlobal": ["C:\\Path\\App.exe"],
   "hiddenProcessesPerDevice": {
@@ -66,6 +74,7 @@ Schema (v1):
 
 Notes:
 - Devices are hidden by IMMDevice id (stable string from `IMMDevice::GetId`).
+- Device colors are stored by IMMDevice id using a fixed preset palette key.
 - Processes are hidden by full exe path (preferred), resolved from session PID.
 
 ## Contributing

@@ -4,6 +4,7 @@
 #include "AudioSession.h"
 #include "AudioWorker.h"
 #include "ConfigStore.h"
+#include "DeviceDirectionProxyModel.h"
 #include "DeviceListModel.h"
 #include "IconCache.h"
 #include "SessionListModel.h"
@@ -20,8 +21,13 @@ AudioBackend::AudioBackend(QObject *parent)
 {
     qRegisterMetaType<QVector<DeviceState>>("QVector<DeviceState>");
     qRegisterMetaType<QVector<SessionPeak>>("QVector<SessionPeak>");
+    qRegisterMetaType<DeviceDirection>("DeviceDirection");
 
     m_deviceModel = new DeviceListModel(this);
+    m_outputDeviceModel = new DeviceDirectionProxyModel(false, this);
+    m_outputDeviceModel->setSourceModel(m_deviceModel);
+    m_inputDeviceModel = new DeviceDirectionProxyModel(true, this);
+    m_inputDeviceModel->setSourceModel(m_deviceModel);
     // The QQmlEngine will take ownership when we addImageProvider("appicon", ...).
     m_iconCache = new IconCache();
     m_coalescer = new UpdateCoalescer(this);
@@ -69,6 +75,14 @@ void AudioBackend::setShowSystemSessions(bool show)
     refresh();
 }
 
+void AudioBackend::setShowInputDevices(bool show)
+{
+    m_showInputDevices = show;
+    if (m_worker)
+        QMetaObject::invokeMethod(m_worker, "setShowInputDevices", Qt::QueuedConnection, Q_ARG(bool, m_showInputDevices));
+    refresh();
+}
+
 void AudioBackend::start()
 {
     if (m_worker)
@@ -104,6 +118,7 @@ void AudioBackend::start()
     m_workerThread.start();
 
     QMetaObject::invokeMethod(m_worker, &AudioWorker::setShowSystemSessions, Qt::QueuedConnection, m_showSystemSessions);
+    QMetaObject::invokeMethod(m_worker, &AudioWorker::setShowInputDevices, Qt::QueuedConnection, m_showInputDevices);
     QMetaObject::invokeMethod(m_worker, &AudioWorker::start, Qt::QueuedConnection);
 }
 
@@ -220,7 +235,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         if (ds.id.isEmpty())
             continue;
 
-        if (ds.isDefault && !foundDefault) {
+        if (ds.direction == DeviceDirection::Output && ds.isDefault && !foundDefault) {
             foundDefault = true;
             defId = ds.id;
             defName = ds.name;
@@ -228,8 +243,9 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
             defMuted = ds.muted;
         }
 
-        if (m_config && m_config->isDeviceHidden(ds.id)) {
+        if (m_config)
             m_config->rememberDeviceName(ds.id, ds.name);
+        if (m_config && m_config->isDeviceHidden(ds.id)) {
             continue;
         }
 
@@ -240,7 +256,7 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
 
         AudioDevice *dev = m_deviceById.value(ds.id, nullptr);
         if (!dev) {
-            dev = new AudioDevice(this, ds.id, ds.name, this);
+            dev = new AudioDevice(this, ds.id, ds.name, ds.direction, this);
             m_deviceById.insert(ds.id, dev);
         }
         // Ensure it's present in the model (it may exist in cache but be filtered out previously).
@@ -250,6 +266,8 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
         }
 
         dev->setName(ds.name);
+        dev->setColorKey(m_config ? m_config->deviceColor(ds.id) : QString());
+        dev->setDirection(ds.direction);
         dev->setIsDefault(ds.isDefault);
         dev->setVolumeInternal(ds.volume);
         dev->setMutedInternal(ds.muted);
@@ -325,15 +343,34 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
                 inDesired.insert(id);
             }
         }
-        // Append the rest in current model order.
-        for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
-            auto *d = m_deviceModel->deviceAt(i);
-            if (!d) continue;
-            if (!keepDeviceIds.contains(d->id())) continue;
-            if (inDesired.contains(d->id())) continue;
-            desired.append(d->id());
-            inDesired.insert(d->id());
-        }
+        // Append the rest in current model order while keeping output/input groups independent.
+        auto appendRemaining = [&](DeviceDirection direction) {
+            for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+                auto *d = m_deviceModel->deviceAt(i);
+                if (!d)
+                    continue;
+                if (d->direction() != direction)
+                    continue;
+                if (!keepDeviceIds.contains(d->id()))
+                    continue;
+                if (inDesired.contains(d->id()))
+                    continue;
+                desired.append(d->id());
+                inDesired.insert(d->id());
+            }
+            for (const auto &ds : devices) {
+                if (ds.direction != direction)
+                    continue;
+                if (!keepDeviceIds.contains(ds.id))
+                    continue;
+                if (inDesired.contains(ds.id))
+                    continue;
+                desired.append(ds.id);
+                inDesired.insert(ds.id);
+            }
+        };
+        appendRemaining(DeviceDirection::Output);
+        appendRemaining(DeviceDirection::Input);
 
         // Reorder model to match desired list.
         for (int targetRow = 0; targetRow < desired.size(); ++targetRow) {
@@ -457,6 +494,49 @@ void AudioBackend::moveDeviceToIndex(const QString &movingDeviceId, int toIndex)
     emit devicesChanged();
 }
 
+void AudioBackend::moveDeviceToIndexInDirection(const QString &movingDeviceId, bool isInput, int toIndex)
+{
+    if (!m_deviceModel || !m_config)
+        return;
+    if (movingDeviceId.isEmpty())
+        return;
+
+    AudioDevice *movingDevice = m_deviceById.value(movingDeviceId, nullptr);
+    if (!movingDevice || movingDevice->isInput() != isInput)
+        return;
+
+    QVector<int> rows;
+    rows.reserve(m_deviceModel->rowCount());
+    for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+        auto *device = m_deviceModel->deviceAt(i);
+        if (device && device->isInput() == isInput)
+            rows.push_back(i);
+    }
+    if (rows.isEmpty())
+        return;
+
+    const int from = m_deviceModel->indexOfDeviceId(movingDeviceId);
+    if (from < 0)
+        return;
+
+    toIndex = qBound(0, toIndex, rows.size() - 1);
+    const int targetRow = rows.at(toIndex);
+    if (from == targetRow)
+        return;
+
+    m_deviceModel->moveDevice(from, targetRow);
+
+    QStringList order;
+    order.reserve(m_deviceModel->rowCount());
+    for (int i = 0; i < m_deviceModel->rowCount(); ++i) {
+        auto *d = m_deviceModel->deviceAt(i);
+        if (d)
+            order.append(d->id());
+    }
+    m_config->setDeviceOrder(order);
+    emit devicesChanged();
+}
+
 QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const
 {
     QVector<DeviceSnapshot> out;
@@ -464,7 +544,7 @@ QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshot() const
         auto *d = m_deviceModel->deviceAt(i);
         if (!d)
             continue;
-        out.push_back({ d->id(), d->name() });
+        out.push_back({ d->id(), d->name(), d->direction() });
     }
     return out;
 }
@@ -476,7 +556,7 @@ QVector<AudioBackend::DeviceSnapshot> AudioBackend::devicesSnapshotAll() const
     for (const auto &ds : m_lastSnapshot) {
         if (ds.id.isEmpty())
             continue;
-        out.push_back({ ds.id, ds.name });
+        out.push_back({ ds.id, ds.name, ds.direction });
     }
     return out;
 }
@@ -606,6 +686,12 @@ void AudioBackend::setSessionMuted(const QString &deviceId, quint32 pid, const Q
         QMetaObject::invokeMethod(m_worker, "setSessionMuted", Qt::QueuedConnection,
                                   Q_ARG(QString, deviceId), Q_ARG(quint32, pid),
                                   Q_ARG(QString, exePath), Q_ARG(bool, muted));
+}
+
+void AudioBackend::setDeviceColorKey(const QString &deviceId, const QString &colorKey)
+{
+    if (auto *d = m_deviceById.value(deviceId, nullptr))
+        d->setColorKey(colorKey);
 }
 
 void AudioBackend::rebuildMenusIfChanged(bool devicesChangedNow, bool processesChangedNow, bool defaultDeviceChangedNow)

@@ -9,46 +9,176 @@ import "components"
 Item {
     id: root
     width: 420
-    // Height is controlled by C++ (auto-fit to content, clamped to screen).
-    // Keep a reasonable implicit baseline for initial show.
     implicitHeight: 420
+    readonly property bool inputDevicesEnabled: appController && appController.showInputDevices
 
-    // C++ reads this to auto-size the flyout height.
-    // Includes: margins (12*2) + header row + spacing + list content + bottom padding.
     readonly property int contentHeightHint: Math.ceil(
-        12*2
+        12 * 2
         + Math.max(topRow.implicitHeight, topRow.height)
         + 10
-        + listView.contentHeight
+        + scrollArea.contentHeight
         + 4
     )
-    property bool trayIconExpanded: false
-    function reopenSettingsMenu() {
-        Qt.callLater(function() {
-            if (settingsMenu)
-                settingsMenu.open()
-        })
-    }
-
     onContentHeightHintChanged: {
         if (appController) appController.requestRelayout()
     }
 
     Styles.Theme { id: theme }
 
-    // Ensure any open QML menus are closed when the app loses focus (e.g. click desktop).
+    component DeviceSectionView: ListView {
+        id: sectionList
+        required property bool isInputSection
+
+        implicitHeight: contentHeight
+        interactive: false
+        clip: true
+        spacing: 10
+        boundsBehavior: Flickable.StopAtBounds
+        moveDisplaced: Transition {
+            NumberAnimation { properties: "x,y"; duration: 120; easing.type: Easing.OutCubic }
+        }
+
+        property bool dragging: false
+        property string draggingId: ""
+        property var draggingDeviceObject: null
+        property real dragGhostY: 0
+        property int dragTargetIndex: -1
+
+        function clearDragState() {
+            dragging = false
+            draggingId = ""
+            draggingDeviceObject = null
+            dragTargetIndex = -1
+        }
+
+        function indexNearY(y) {
+            const x = 10
+            let idx = sectionList.indexAt(x, y)
+            if (idx >= 0) return idx
+            idx = sectionList.indexAt(x, y - sectionList.spacing / 2)
+            if (idx >= 0) return idx
+            idx = sectionList.indexAt(x, y + sectionList.spacing / 2)
+            if (idx >= 0) return idx
+            return -1
+        }
+
+        function targetIndexForMidY(midY) {
+            if (sectionList.count <= 0)
+                return -1
+
+            const clampedY = Math.max(0, Math.min(midY, Math.max(0, sectionList.contentHeight - 1)))
+            let idx = sectionList.indexNearY(clampedY)
+            if (idx < 0)
+                idx = sectionList.count - 1
+
+            const item = sectionList.itemAtIndex(idx)
+            if (item && clampedY > (item.y + item.height / 2))
+                idx = Math.min(idx + 1, sectionList.count - 1)
+
+            return idx
+        }
+
+        Item {
+            id: dragGhost
+            visible: sectionList.dragging && sectionList.draggingDeviceObject
+            z: 5000
+            x: 0
+            y: Math.max(0, Math.min(sectionList.dragGhostY, sectionList.height - height))
+            width: sectionList.width
+            height: ghostCell.implicitHeight
+
+            DeviceCell {
+                id: ghostCell
+                anchors.fill: parent
+                deviceObject: sectionList.draggingDeviceObject
+                opacity: 0.92
+            }
+        }
+
+        delegate: Item {
+            id: row
+            width: sectionList.width
+            height: cell.implicitHeight
+            property string deviceId: model.deviceId
+            property var deviceObject: model.deviceObject
+            property bool isInput: model.isInput
+            property int _lastTargetIndex: -1
+            property real _dragStartY: 0
+
+            DeviceCell {
+                id: cell
+                anchors.fill: parent
+                deviceObject: model.deviceObject
+                opacity: (sectionList.dragging && sectionList.draggingId === row.deviceId) ? 0.15 : 1.0
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 12
+                color: "transparent"
+                border.width: (sectionList.dragging
+                               && sectionList.dragTargetIndex === index
+                               && sectionList.draggingId !== row.deviceId) ? 1 : 0
+                border.color: Qt.rgba(0.23, 0.59, 1.0, 0.55)
+            }
+
+            DragHandler {
+                id: dragHandler
+                target: null
+                xAxis.enabled: false
+                yAxis.enabled: true
+
+                onActiveChanged: {
+                    if (active) {
+                        row.z = 1000
+                        row._lastTargetIndex = -1
+                        row._dragStartY = row.y
+                        sectionList.dragging = true
+                        sectionList.draggingId = row.deviceId
+                        sectionList.draggingDeviceObject = row.deviceObject
+                        sectionList.dragTargetIndex = index
+                        sectionList.dragGhostY = row.y
+                    } else {
+                        row.z = 0
+                        row._lastTargetIndex = -1
+                        if (sectionList.draggingId === row.deviceId)
+                            sectionList.clearDragState()
+                    }
+                }
+
+                onTranslationChanged: {
+                    const ghostY = row._dragStartY + dragHandler.translation.y
+                    const midY = ghostY + row.height / 2
+                    if (sectionList.draggingId === row.deviceId)
+                        sectionList.dragGhostY = ghostY
+                    const idx = sectionList.targetIndexForMidY(midY)
+                    if (idx >= 0 && idx !== index && idx !== row._lastTargetIndex) {
+                        row._lastTargetIndex = idx
+                        if (sectionList.draggingId === row.deviceId)
+                            sectionList.dragTargetIndex = idx
+                        if (audioBackend)
+                            audioBackend.moveDeviceToIndexInDirection(row.deviceId, row.isInput, idx)
+                    }
+                }
+            }
+
+            Component.onDestruction: {
+                if (sectionList.draggingId === row.deviceId)
+                    sectionList.clearDragState()
+            }
+        }
+    }
+
     Connections {
         target: appController
         function onCloseAllPopupsRequested() {
-            if (settingsMenu) settingsMenu.close()
-            if (hiddenMenu) hiddenMenu.close()
         }
     }
 
     Rectangle {
         anchors.fill: parent
         radius: theme.radius
-        color: Qt.rgba(0, 0, 0, 0) // let acrylic show through; QML draws cells/panel.
+        color: Qt.rgba(0, 0, 0, 0)
         border.color: Qt.rgba(1, 1, 1, 0.06)
         border.width: 1
         clip: true
@@ -92,7 +222,6 @@ Item {
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
                 padding: 0
-                property bool wasOpenOnPress: false
                 font.family: theme.iconFont
                 font.pixelSize: 14
                 text: theme.glyphSettings
@@ -102,146 +231,7 @@ Item {
                     color: settingsBtn.hovered ? theme.cellHover : "transparent"
                 }
 
-                onPressed: wasOpenOnPress = settingsMenu.visible
-                onClicked: {
-                    if (wasOpenOnPress) {
-                        wasOpenOnPress = false
-                        settingsMenu.close()
-                        return
-                    }
-                    settingsMenu.open()
-                }
-
-                StyledMenu {
-                    id: settingsMenu
-                    y: settingsBtn.height
-
-                    StyledMenuItem {
-                        text: (appController && appController.debugMode ? "✓ " : "") + "Debug mode"
-                        onTriggered: {
-                            if (appController) appController.debugMode = !appController.debugMode
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.startWithWindows ? "✓ " : "") + "Start with Windows"
-                        onTriggered: {
-                            if (appController) appController.startWithWindows = !appController.startWithWindows
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        id: trayIconItem
-                        text: (root.trayIconExpanded ? "▼ " : "► ") + "Tray icon options"
-                        onTriggered: {
-                            root.trayIconExpanded = !root.trayIconExpanded
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && appController.useNativeTrayIcon ? "✓ " : "") + "Native (.ico)"
-                        onTriggered: {
-                            if (appController) appController.useNativeTrayIcon = true
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 0 ? "✓ " : "") + "Earie White"
-                        onTriggered: {
-                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 0 }
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        visible: root.trayIconExpanded
-                        implicitHeight: root.trayIconExpanded ? 30 : 0
-                        height: root.trayIconExpanded ? 30 : 0
-                        leftPadding: 26
-                        text: (appController && !appController.useNativeTrayIcon && appController.trayIconMode === 1 ? "✓ " : "") + "Earie Black"
-                        onTriggered: {
-                            if (appController) { appController.useNativeTrayIcon = false; appController.trayIconMode = 1 }
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: "Open config folder"
-                        onTriggered: if (appController) appController.openConfigFolder()
-                    }
-                    StyledMenuItem {
-                        text: "Open application folder"
-                        onTriggered: if (appController) appController.openAppFolder()
-                    }
-                    MenuSeparator { }
-                    StyledMenuItem {
-                        text: (appController && appController.showSystemSessions ? "✓ " : "") + "Show system sessions"
-                        onTriggered: {
-                            if (appController) appController.showSystemSessions = !appController.showSystemSessions
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.showProcessStatusOnHover ? "✓ " : "") + "Show hover process status"
-                        onTriggered: {
-                            if (appController) appController.showProcessStatusOnHover = !appController.showProcessStatusOnHover
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                    StyledMenuItem {
-                        text: (appController && appController.scrollWheelVolumeOnHover ? "✓ " : "") + "Scroll wheel changes volume on hover (2%)"
-                        onTriggered: {
-                            if (appController) appController.scrollWheelVolumeOnHover = !appController.scrollWheelVolumeOnHover
-                            root.reopenSettingsMenu()
-                        }
-                    }
-                }
-            }
-
-            ToolButton {
-                id: hiddenBtn
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                padding: 0
-                property bool wasOpenOnPress: false
-                font.family: theme.iconFont
-                font.pixelSize: 14
-                text: theme.glyphEye
-
-                background: Rectangle {
-                    radius: 8
-                    color: hiddenBtn.hovered ? theme.cellHover : "transparent"
-                }
-
-                onPressed: wasOpenOnPress = hiddenMenu.visible
-                onClicked: {
-                    if (wasOpenOnPress) {
-                        wasOpenOnPress = false
-                        hiddenMenu.close()
-                        return
-                    }
-                    hiddenMenu.open()
-                }
-
-                StyledMenu {
-                    id: hiddenMenu
-                    y: hiddenBtn.height
-
-                    StyledMenuItem {
-                        text: "Hidden devices..."
-                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("devices")
-                    }
-                    StyledMenuItem {
-                        text: "Hidden processes..."
-                        onTriggered: if (appController) appController.showHiddenItemsWindowSection("processes")
-                    }
-                }
+                onClicked: if (appController) appController.showSettingsWindow()
             }
 
             ToolButton {
@@ -262,165 +252,72 @@ Item {
             }
         }
 
-        // ListView is already a Flickable; we use it to support drag reordering.
-        ListView {
-            id: listView
+        Flickable {
+            id: scrollArea
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 10
             boundsBehavior: Flickable.StopAtBounds
-            model: deviceModel
-            // Smoothly keep equal spacing while reordering.
-            moveDisplaced: Transition {
-                NumberAnimation { properties: "x,y"; duration: 120; easing.type: Easing.OutCubic }
-            }
+            contentWidth: width
+            contentHeight: sectionsColumn.implicitHeight
 
-            // Drag feedback ("ghost") state
-            property bool dragging: false
-            property string draggingId: ""
-            property var draggingDeviceObject: null
-            property real dragGhostY: 0
-            property int dragTargetIndex: -1
+            Column {
+                id: sectionsColumn
+                width: scrollArea.width
+                spacing: 12
 
-            function clearDragState() {
-                dragging = false
-                draggingId = ""
-                draggingDeviceObject = null
-                dragTargetIndex = -1
-            }
+                Column {
+                    width: parent.width
+                    spacing: 8
 
-            function indexNearY(y) {
-                // ListView.indexAt returns -1 when over spacing/gaps; probe around the gap.
-                const x = 10
-                let idx = listView.indexAt(x, y)
-                if (idx >= 0) return idx
-                idx = listView.indexAt(x, y - listView.spacing / 2)
-                if (idx >= 0) return idx
-                idx = listView.indexAt(x, y + listView.spacing / 2)
-                if (idx >= 0) return idx
-                return -1
-            }
-
-            function targetIndexForMidY(midY) {
-                if (listView.count <= 0)
-                    return -1
-
-                // Clamp to content bounds so dragging from bottom doesn't "wrap".
-                const clampedY = Math.max(0, Math.min(midY, Math.max(0, listView.contentHeight - 1)))
-                let idx = listView.indexNearY(clampedY)
-                if (idx < 0)
-                    idx = listView.count - 1
-
-                // If we're past the midpoint of the hit item, insert after it.
-                const item = listView.itemAtIndex(idx)
-                if (item && clampedY > (item.y + item.height / 2))
-                    idx = Math.min(idx + 1, listView.count - 1)
-
-                return idx
-            }
-
-            // Floating ghost cell that follows the pointer while the real list stays snapped.
-            Item {
-                id: dragGhost
-                visible: listView.dragging && listView.draggingDeviceObject
-                z: 5000
-                x: 0
-                y: Math.max(0, Math.min(listView.dragGhostY, listView.height - height))
-                width: listView.width
-                height: ghostCell.implicitHeight
-
-                DeviceCell {
-                    id: ghostCell
-                    anchors.fill: parent
-                    deviceObject: listView.draggingDeviceObject
-                    opacity: 0.92
-                }
-            }
-
-            delegate: Item {
-                id: row
-                width: listView.width
-                height: cell.implicitHeight
-                property string deviceId: model.deviceId
-                property var deviceObject: model.deviceObject
-
-                // Drag the whole device cell to reorder (snap by moving the model).
-                // IMPORTANT: we do NOT move the delegate itself (prevents overlap).
-                property int _lastTargetIndex: -1
-                property real _dragStartY: 0
-
-                DeviceCell {
-                    id: cell
-                    anchors.fill: parent
-                    deviceObject: model.deviceObject
-                    // Hide the original while we show a ghost on top.
-                    opacity: (listView.dragging && listView.draggingId === row.deviceId) ? 0.15 : 1.0
-                }
-
-                // Subtle placeholder highlight at the current target slot.
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 12
-                    color: "transparent"
-                    border.width: (listView.dragging
-                                   && listView.dragTargetIndex === index
-                                   && listView.draggingId !== row.deviceId) ? 1 : 0
-                    border.color: Qt.rgba(0.23, 0.59, 1.0, 0.55)
-                }
-
-                DragHandler {
-                    id: dragHandler
-                    target: null
-                    xAxis.enabled: false
-                    yAxis.enabled: true
-
-                    onActiveChanged: {
-                        if (active) {
-                            row.z = 1000
-                            row._lastTargetIndex = -1
-                            row._dragStartY = row.y
-                            listView.dragging = true
-                            listView.draggingId = row.deviceId
-                            listView.draggingDeviceObject = row.deviceObject
-                            listView.dragTargetIndex = index
-                            listView.dragGhostY = row.y
-                        } else {
-                            row.z = 0
-                            row._lastTargetIndex = -1
-                            if (listView.draggingId === row.deviceId) {
-                                listView.clearDragState()
-                            }
-                        }
+                    Text {
+                        visible: root.inputDevicesEnabled
+                        color: theme.textMuted
+                        font.pixelSize: 11
+                        text: "Playback"
                     }
 
-                    onTranslationChanged: {
-                        // Use the fixed drag start Y (row.y changes as the model reorders).
-                        const ghostY = row._dragStartY + dragHandler.translation.y
-                        const midY = ghostY + row.height / 2
-                        if (listView.draggingId === row.deviceId) {
-                            listView.dragGhostY = ghostY
-                        }
-                        const idx = listView.targetIndexForMidY(midY)
-                        if (idx >= 0 && idx !== index && idx !== row._lastTargetIndex) {
-                            row._lastTargetIndex = idx
-                            if (listView.draggingId === row.deviceId) {
-                                listView.dragTargetIndex = idx
-                            }
-                            if (audioBackend) audioBackend.moveDeviceToIndex(row.deviceId, idx)
-                        }
+                    Text {
+                        visible: outputList.count === 0
+                        color: theme.textMuted
+                        font.pixelSize: 11
+                        text: "(No playback devices)"
+                    }
+
+                    DeviceSectionView {
+                        id: outputList
+                        width: parent.width
+                        isInputSection: false
+                        model: outputDeviceModel
                     }
                 }
 
-                Component.onDestruction: {
-                    // If the delegate is recycled while dragging, ensure we clear the ghost.
-                    if (listView.draggingId === row.deviceId) {
-                        listView.clearDragState()
+                Column {
+                    visible: root.inputDevicesEnabled
+                    width: parent.width
+                    spacing: 8
+
+                    Text {
+                        color: theme.textMuted
+                        font.pixelSize: 11
+                        text: "Input"
+                    }
+
+                    Text {
+                        visible: inputList.count === 0
+                        color: theme.textMuted
+                        font.pixelSize: 11
+                        text: "(No input devices)"
+                    }
+
+                    DeviceSectionView {
+                        id: inputList
+                        width: parent.width
+                        isInputSection: true
+                        model: inputDeviceModel
                     }
                 }
             }
         }
     }
 }
-
-

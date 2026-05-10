@@ -12,6 +12,7 @@ public:
         DeviceObjectRole = Qt::UserRole + 1,
         DeviceIdRole,
         NameRole,
+        IsInputRole,
         IsDefaultRole,
         VolumeRole,
         MutedRole,

@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Earie VERSION 1.2.1 LANGUAGES CXX)
+project(Earie VERSION 1.3.0 LANGUAGES CXX)
 
 set(TARGET_NAME Earie)
+set(EARIE_BETA "0")
+
+if (EARIE_BETA STREQUAL "0")
+    set(EARIE_DISPLAY_VERSION "${PROJECT_VERSION}")
+else()
+    set(EARIE_DISPLAY_VERSION "${PROJECT_VERSION}-beta${EARIE_BETA}")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +33,7 @@ qt_add_executable(${TARGET_NAME} WIN32
     src/ComInit.cpp
     src/ConfigStore.cpp
     src/DeviceListModel.cpp
+    src/DeviceDirectionProxyModel.cpp
     src/IconCache.cpp
     src/SessionListModel.cpp
     src/UpdateCoalescer.cpp
@@ -42,6 +50,7 @@ qt_add_executable(${TARGET_NAME} WIN32
     include/ComInit.h
     include/ConfigStore.h
     include/DeviceListModel.h
+    include/DeviceDirectionProxyModel.h
     include/IconCache.h
     include/SessionListModel.h
     include/UpdateCoalescer.h
@@ -58,6 +67,7 @@ target_compile_definitions(${TARGET_NAME} PRIVATE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
     EARIE_VERSION="${PROJECT_VERSION}"
+    EARIE_DISPLAY_VERSION="${EARIE_DISPLAY_VERSION}"
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE

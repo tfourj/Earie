@@ -20,12 +20,16 @@ class AppController final : public QObject
     Q_OBJECT
     Q_PROPERTY(bool allDevices READ allDevices WRITE setAllDevices NOTIFY allDevicesChanged)
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
+    Q_PROPERTY(bool showInputDevices READ showInputDevices WRITE setShowInputDevices NOTIFY showInputDevicesChanged)
+    Q_PROPERTY(bool showInputApplications READ showInputApplications WRITE setShowInputApplications NOTIFY showInputApplicationsChanged)
     Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
     Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
     Q_PROPERTY(bool startWithWindows READ startWithWindows WRITE setStartWithWindows NOTIFY startWithWindowsChanged)
     Q_PROPERTY(bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
     Q_PROPERTY(bool useNativeTrayIcon READ useNativeTrayIcon WRITE setUseNativeTrayIcon NOTIFY useNativeTrayIconChanged)
     Q_PROPERTY(int trayIconMode READ trayIconMode WRITE setTrayIconMode NOTIFY trayIconModeChanged)
+    Q_PROPERTY(double deviceColorOpacity READ deviceColorOpacity WRITE setDeviceColorOpacity NOTIFY deviceColorOpacityChanged)
+    Q_PROPERTY(int deviceColorMode READ deviceColorMode WRITE setDeviceColorMode NOTIFY deviceColorModeChanged)
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -37,6 +41,12 @@ public:
 
     bool showSystemSessions() const { return m_showSystemSessions; }
     void setShowSystemSessions(bool v);
+
+    bool showInputDevices() const { return m_showInputDevices; }
+    void setShowInputDevices(bool v);
+
+    bool showInputApplications() const { return m_showInputApplications; }
+    void setShowInputApplications(bool v);
 
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
@@ -56,15 +66,25 @@ public:
     int trayIconMode() const { return m_trayIconMode; }
     void setTrayIconMode(int v);
 
+    double deviceColorOpacity() const { return m_deviceColorOpacity; }
+    void setDeviceColorOpacity(double v);
+
+    int deviceColorMode() const { return m_deviceColorMode; }
+    void setDeviceColorMode(int mode);
+
 public slots:
     Q_INVOKABLE void toggleFlyout();
     Q_INVOKABLE void showFlyout();
     Q_INVOKABLE void hideFlyout();
+    Q_INVOKABLE void showSettingsWindow();
+    Q_INVOKABLE void showSettingsWindowSection(const QString &section);
+    Q_INVOKABLE void hideSettingsWindow();
     Q_INVOKABLE void showHiddenItemsWindow();
     Q_INVOKABLE void showHiddenItemsWindowSection(const QString &section);
     Q_INVOKABLE void hideHiddenItemsWindow();
     // Called by QML when content height changes (e.g. sessions hidden/unhidden).
     Q_INVOKABLE void requestRelayout();
+    Q_INVOKABLE void requestSettingsRelayout();
     Q_INVOKABLE void requestHiddenItemsRelayout();
     Q_INVOKABLE void setDeviceHidden(const QString &deviceId, bool hidden);
     Q_INVOKABLE void setProcessHiddenGlobal(const QString &exePath, bool hidden);
@@ -76,6 +96,9 @@ public slots:
     Q_INVOKABLE QVariantList hiddenDevicesSnapshot() const;
     Q_INVOKABLE QVariantList hiddenProcessesGlobalSnapshot() const;
     Q_INVOKABLE QVariantList hiddenProcessesPerDeviceSnapshot() const;
+    Q_INVOKABLE QVariantList deviceAppearanceSnapshot() const;
+    Q_INVOKABLE QString deviceColor(const QString &deviceId) const;
+    Q_INVOKABLE void setDeviceColor(const QString &deviceId, const QString &colorKey);
     Q_INVOKABLE void popupOpened();
     Q_INVOKABLE void popupClosed();
     void showAboutDialog();
@@ -83,14 +106,19 @@ public slots:
 signals:
     void allDevicesChanged();
     void showSystemSessionsChanged();
+    void showInputDevicesChanged();
+    void showInputApplicationsChanged();
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
     void startWithWindowsChanged();
     void debugModeChanged();
     void useNativeTrayIconChanged();
     void trayIconModeChanged();
+    void deviceColorOpacityChanged();
+    void deviceColorModeChanged();
     void closeAllPopupsRequested();
     void hiddenItemsChanged();
+    void deviceAppearanceChanged();
 
 private slots:
     void rebuildHiddenMenus();
@@ -98,10 +126,13 @@ private slots:
 private:
     void buildTray();
     void buildFlyout();
+    void buildSettingsWindow();
     void buildHiddenItemsWindow();
-    void positionFlyout();
+    void positionFlyout(bool preferTrayAnchor = true);
+    void positionSettingsWindow(bool recomputeAnchor);
     void positionHiddenItemsWindow(bool recomputeAnchor);
     void adjustFlyoutHeightToContent();
+    void adjustSettingsHeightToContent();
     void adjustHiddenItemsHeightToContent();
     void applyStartWithWindows(bool v);
     void applyWindowEffectsIfPossible(QQuickView *view);
@@ -115,14 +146,19 @@ private:
     QPointer<QMenu> m_hiddenProcessesMenu;
 
     QAction *m_actionOpen = nullptr;
+    QAction *m_actionSettings = nullptr;
     QAction *m_actionQuit = nullptr;
     QAction *m_actionDefaultOnly = nullptr;
     QAction *m_actionAllDevices = nullptr;
     QAction *m_actionStartWithWindows = nullptr;
 
     QPointer<QQuickView> m_view;
+    QPointer<QQuickView> m_settingsView;
     QPointer<QQuickView> m_hiddenView;
 
+    QPoint m_settingsAnchorPos;
+    QRect m_settingsAnchorWork;
+    bool m_settingsAnchorValid = false;
     QPoint m_hiddenAnchorPos;
     QRect m_hiddenAnchorWork;
     bool m_hiddenAnchorValid = false;
@@ -132,12 +168,16 @@ private:
 
     bool m_allDevices = false;
     bool m_showSystemSessions = false;
+    bool m_showInputDevices = false;
+    bool m_showInputApplications = true;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_startWithWindows = false;
     bool m_debugMode = false;
     bool m_useNativeTrayIcon = false;
     int m_trayIconMode = 0;
+    double m_deviceColorOpacity = 1.0;
+    int m_deviceColorMode = 0;
 
     QTimer m_trayIconCoalesce;
     int m_pendingTrayVolPct = -1;
