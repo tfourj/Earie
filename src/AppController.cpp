@@ -753,6 +753,10 @@ void AppController::showFlyout()
 {
     if (!m_view)
         return;
+    if (m_audio) {
+        m_audio->setMeteringEnabled(true);
+        m_audio->refresh();
+    }
     adjustFlyoutHeightToContent();
     positionFlyout();
     m_view->show();
@@ -778,6 +782,8 @@ void AppController::hideFlyout()
     if (!m_view)
         return;
     m_view->hide();
+    if (m_audio)
+        m_audio->setMeteringEnabled(false);
 }
 
 void AppController::showSettingsWindow()
