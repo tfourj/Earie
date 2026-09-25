@@ -161,10 +161,19 @@ void AudioBackend::applyPeaks(const QVector<SessionPeak> &peaks)
 void AudioBackend::refresh()
 {
     // Snapshot filtering is applied on the GUI side (mode + hidden rules),
-    // so a refresh is effectively "re-apply last snapshot". Worker will also
-    // naturally re-snapshot due to polling/callbacks.
+    // so immediately re-apply the cached snapshot while the worker refreshes
+    // asynchronously. This keeps the UI populated while obtaining fresh state.
     if (!m_lastSnapshot.isEmpty())
         applySnapshot(m_lastSnapshot);
+
+    if (m_worker)
+        QMetaObject::invokeMethod(m_worker, &AudioWorker::requestSnapshot, Qt::QueuedConnection);
+}
+
+void AudioBackend::setMeteringEnabled(bool enabled)
+{
+    if (m_worker)
+        QMetaObject::invokeMethod(m_worker, &AudioWorker::setMeteringEnabled, Qt::QueuedConnection, enabled);
 }
 
 static QString sessionKeyStr(quint32 pid, const QString &exePath)

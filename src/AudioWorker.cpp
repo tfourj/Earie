@@ -429,8 +429,8 @@ AudioWorker::AudioWorker(QObject *parent)
     m_snapshotTimer.setInterval(16);
     connect(&m_snapshotTimer, &QTimer::timeout, this, &AudioWorker::emitSnapshotNow);
 
-    // Slow periodic refresh as a safety net (structure changes are still event-driven).
-    m->peakPollTimer.setInterval(250);
+    // Periodic refresh is only a safety net; structure and volume changes are event-driven.
+    m->peakPollTimer.setInterval(1500);
     connect(&m->peakPollTimer, &QTimer::timeout, this, [this]() { scheduleSnapshot(); });
 
     // Per-session peak meters for EarTrumpet-like activity line.
@@ -458,7 +458,8 @@ void AudioWorker::start()
     }
 
     m->peakPollTimer.start();
-    m_meterTimer.start();
+    if (m_meteringEnabled)
+        m_meterTimer.start();
     scheduleSnapshot();
 }
 
@@ -470,6 +471,27 @@ void AudioWorker::stop()
     m_snapshotTimer.stop();
     m_meterTimer.stop();
     m->shutdown();
+}
+
+void AudioWorker::requestSnapshot()
+{
+    if (m_destroying.load())
+        return;
+    scheduleSnapshot();
+}
+
+void AudioWorker::setMeteringEnabled(bool enabled)
+{
+    if (m_destroying.load() || m_meteringEnabled == enabled)
+        return;
+
+    m_meteringEnabled = enabled;
+    if (enabled) {
+        emitPeaksNow();
+        m_meterTimer.start();
+    } else {
+        m_meterTimer.stop();
+    }
 }
 
 void AudioWorker::setShowSystemSessions(bool show)

@@ -59,6 +59,8 @@ public:
 public slots:
     void start();
     void stop();
+    void requestSnapshot();
+    void setMeteringEnabled(bool enabled);
 
     void setShowSystemSessions(bool show);
     void setShowInputDevices(bool show);
@@ -80,6 +82,7 @@ private:
 
     bool m_showSystemSessions = false;
     bool m_showInputDevices = false;
+    bool m_meteringEnabled = false;
     std::atomic<bool> m_destroying{false};
     QTimer m_snapshotTimer;
     QTimer m_meterTimer;

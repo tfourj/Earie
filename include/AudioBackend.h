@@ -44,6 +44,7 @@ public:
 
     void start();
     void refresh();
+    void setMeteringEnabled(bool enabled);
 
     DeviceListModel *deviceModel() const { return m_deviceModel; }
     QAbstractItemModel *outputDeviceModel() const { return m_outputDeviceModel; }
