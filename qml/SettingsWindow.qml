@@ -14,6 +14,11 @@ Item {
     property var globalProcesses: []
     property var perDeviceProcesses: []
     property var deviceAppearances: []
+    readonly property var visibleDeviceAppearances: {
+        if (!appController || !appController.hideDisconnectedDevices)
+            return deviceAppearances
+        return deviceAppearances.filter(entry => entry.connected !== false)
+    }
     readonly property var paletteOptions: theme.paletteModel()
     property var perDeviceExpandedMap: ({})
 
@@ -669,15 +674,26 @@ Item {
                                 }
                             }
 
+                            ToggleRow {
+                                width: parent.width
+                                label: "Hide disconnected devices"
+                                description: "Only list connected devices. Saved colors for disconnected devices are kept."
+                                checked: appController && appController.hideDisconnectedDevices
+                                onToggled: {
+                                    if (appController)
+                                        appController.hideDisconnectedDevices = !appController.hideDisconnectedDevices
+                                }
+                            }
+
                             Text {
-                                visible: deviceAppearances.length === 0
+                                visible: visibleDeviceAppearances.length === 0
                                 color: theme.textMuted
                                 font.pixelSize: 11
                                 text: "(No devices)"
                             }
 
                             Repeater {
-                                model: deviceAppearances
+                                model: visibleDeviceAppearances
                                 delegate: Rectangle {
                                     property var deviceEntry: modelData
                                     width: parent.width
