@@ -388,10 +388,12 @@ bool ConfigStore::remapDeviceId(const QString &oldDeviceId, const QString &newDe
         didChange = true;
     }
 
+    // If the new id already has a slot, it was placed more recently than the old one; keep it.
     bool orderChanged = false;
+    const bool newIdOrdered = m_deviceOrder.contains(newDeviceId);
     for (auto &id : m_deviceOrder) {
         if (id == oldDeviceId) {
-            id = newDeviceId;
+            id = newIdOrdered ? QString() : newDeviceId;
             orderChanged = true;
         }
     }
