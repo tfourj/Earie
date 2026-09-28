@@ -14,6 +14,8 @@
 #include <QSet>
 #include <QStringList>
 
+#include <optional>
+
 static QString sessionKeyStr(quint32 pid, const QString &exePath);
 
 AudioBackend::AudioBackend(QObject *parent)
@@ -181,16 +183,38 @@ static QString sessionKeyStr(quint32 pid, const QString &exePath)
     return QString::number(pid) + QLatin1Char('|') + exePath;
 }
 
+// MMDevice endpoint ids start with "{0.0.0." for render and "{0.0.1." for capture endpoints.
+static std::optional<DeviceDirection> endpointDirectionFromId(const QString &deviceId)
+{
+    if (deviceId.startsWith(QLatin1String("{0.0.0.")))
+        return DeviceDirection::Output;
+    if (deviceId.startsWith(QLatin1String("{0.0.1.")))
+        return DeviceDirection::Input;
+    return std::nullopt;
+}
+
+static QString remapKey(DeviceDirection direction, const QString &nameKey)
+{
+    return (direction == DeviceDirection::Input ? QStringLiteral("in|") : QStringLiteral("out|")) + nameKey;
+}
+
 void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
 {
     if (!m_deviceModel)
         return;
 
+    bool anyDevicesChanged = false;
+    bool anyProcessesChanged = false;
+
+    // Windows sometimes re-enumerates an endpoint under a new id. Move settings saved for a
+    // disconnected id onto the connected device with the same name and direction.
     if (m_config) {
         QSet<QString> connectedIds;
+        QHash<QString, QStringList> connectedIdsByKey;
         QHash<QString, QStringList> connectedIdsByName;
         QHash<QString, QString> connectedNameById;
         connectedIds.reserve(devices.size());
+        connectedIdsByKey.reserve(devices.size());
         connectedIdsByName.reserve(devices.size());
         connectedNameById.reserve(devices.size());
 
@@ -200,36 +224,32 @@ void AudioBackend::applySnapshot(const QVector<DeviceState> &devices)
             connectedIds.insert(ds.id);
             connectedNameById.insert(ds.id, ds.name);
             const QString nameKey = ds.name.trimmed().toCaseFolded();
-            if (!nameKey.isEmpty())
-                connectedIdsByName[nameKey].append(ds.id);
+            if (nameKey.isEmpty())
+                continue;
+            connectedIdsByKey[remapKey(ds.direction, nameKey)].append(ds.id);
+            connectedIdsByName[nameKey].append(ds.id);
         }
 
-        QHash<QString, QStringList> disconnectedHiddenIdsByName;
-        const auto hiddenIds = m_config->hiddenDevices();
-        disconnectedHiddenIdsByName.reserve(hiddenIds.size());
-        for (const auto &hiddenId : hiddenIds) {
-            if (hiddenId.isEmpty() || connectedIds.contains(hiddenId))
+        const auto rememberedIds = m_config->rememberedDeviceIds();
+        for (const auto &oldId : rememberedIds) {
+            if (oldId.isEmpty() || connectedIds.contains(oldId))
                 continue;
-            const QString hiddenNameKey = m_config->hiddenDeviceName(hiddenId).trimmed().toCaseFolded();
-            if (!hiddenNameKey.isEmpty())
-                disconnectedHiddenIdsByName[hiddenNameKey].append(hiddenId);
-        }
+            const QString nameKey = m_config->deviceName(oldId).trimmed().toCaseFolded();
+            if (nameKey.isEmpty())
+                continue;
 
-        for (auto it = disconnectedHiddenIdsByName.constBegin(); it != disconnectedHiddenIdsByName.constEnd(); ++it) {
-            const QStringList oldIds = it.value();
-            const QStringList newIds = connectedIdsByName.value(it.key());
-            if (oldIds.size() != 1 || newIds.size() != 1)
+            // Only remap when exactly one connected device matches, so identical devices never merge.
+            const auto oldDirection = endpointDirectionFromId(oldId);
+            const QStringList newIds = oldDirection
+                ? connectedIdsByKey.value(remapKey(*oldDirection, nameKey))
+                : connectedIdsByName.value(nameKey);
+            if (newIds.size() != 1)
                 continue;
-            const QString oldId = oldIds.constFirst();
             const QString newId = newIds.constFirst();
-            if (oldId == newId)
-                continue;
-            (void)m_config->remapDeviceId(oldId, newId, connectedNameById.value(newId));
+            if (m_config->remapDeviceId(oldId, newId, connectedNameById.value(newId)))
+                anyDevicesChanged = true;
         }
     }
-
-    bool anyDevicesChanged = false;
-    bool anyProcessesChanged = false;
 
     // Track default device status for tray icon behavior (EarTrumpet-like).
     bool foundDefault = false;
