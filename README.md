@@ -75,6 +75,7 @@ Schema (v2):
 Notes:
 - Devices are hidden by IMMDevice id (stable string from `IMMDevice::GetId`).
 - Device colors are stored by IMMDevice id using a fixed preset palette key.
+- If a device reconnects under a new id, its saved settings move to the connected device with the same name and direction.
 - Processes are hidden by full exe path (preferred), resolved from session PID.
 
 ## Contributing
