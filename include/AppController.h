@@ -22,6 +22,7 @@ class AppController final : public QObject
     Q_PROPERTY(bool showSystemSessions READ showSystemSessions WRITE setShowSystemSessions NOTIFY showSystemSessionsChanged)
     Q_PROPERTY(bool showInputDevices READ showInputDevices WRITE setShowInputDevices NOTIFY showInputDevicesChanged)
     Q_PROPERTY(bool showInputApplications READ showInputApplications WRITE setShowInputApplications NOTIFY showInputApplicationsChanged)
+    Q_PROPERTY(bool hideDisconnectedDevices READ hideDisconnectedDevices WRITE setHideDisconnectedDevices NOTIFY hideDisconnectedDevicesChanged)
     Q_PROPERTY(bool showProcessStatusOnHover READ showProcessStatusOnHover WRITE setShowProcessStatusOnHover NOTIFY showProcessStatusOnHoverChanged)
     Q_PROPERTY(bool scrollWheelVolumeOnHover READ scrollWheelVolumeOnHover WRITE setScrollWheelVolumeOnHover NOTIFY scrollWheelVolumeOnHoverChanged)
     Q_PROPERTY(bool startWithWindows READ startWithWindows WRITE setStartWithWindows NOTIFY startWithWindowsChanged)
@@ -47,6 +48,9 @@ public:
 
     bool showInputApplications() const { return m_showInputApplications; }
     void setShowInputApplications(bool v);
+
+    bool hideDisconnectedDevices() const { return m_hideDisconnectedDevices; }
+    void setHideDisconnectedDevices(bool v);
 
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
@@ -108,6 +112,7 @@ signals:
     void showSystemSessionsChanged();
     void showInputDevicesChanged();
     void showInputApplicationsChanged();
+    void hideDisconnectedDevicesChanged();
     void showProcessStatusOnHoverChanged();
     void scrollWheelVolumeOnHoverChanged();
     void startWithWindowsChanged();
@@ -170,6 +175,7 @@ private:
     bool m_showSystemSessions = false;
     bool m_showInputDevices = false;
     bool m_showInputApplications = true;
+    bool m_hideDisconnectedDevices = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_startWithWindows = false;

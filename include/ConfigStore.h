@@ -36,6 +36,9 @@ public:
     bool showInputApplications() const { return m_showInputApplications; }
     void setShowInputApplications(bool v);
 
+    bool hideDisconnectedDevices() const { return m_hideDisconnectedDevices; }
+    void setHideDisconnectedDevices(bool v);
+
     bool showProcessStatusOnHover() const { return m_showProcessStatusOnHover; }
     void setShowProcessStatusOnHover(bool v);
 
@@ -88,6 +91,7 @@ private:
     bool m_showSystemSessions = false;
     bool m_showInputDevices = false;
     bool m_showInputApplications = true;
+    bool m_hideDisconnectedDevices = false;
     bool m_showProcessStatusOnHover = false;
     bool m_scrollWheelVolumeOnHover = false;
     bool m_debugMode = false;

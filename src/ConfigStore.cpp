@@ -42,6 +42,7 @@ void ConfigStore::load()
     m_showSystemSessions = o.value(QStringLiteral("showSystemSessions")).toBool(false);
     m_showInputDevices = o.value(QStringLiteral("showInputDevices")).toBool(false);
     m_showInputApplications = o.value(QStringLiteral("showInputApplications")).toBool(true);
+    m_hideDisconnectedDevices = o.value(QStringLiteral("hideDisconnectedDevices")).toBool(false);
     m_showProcessStatusOnHover = o.value(QStringLiteral("showProcessStatusOnHover")).toBool(false);
     m_scrollWheelVolumeOnHover = o.value(QStringLiteral("scrollWheelVolumeOnHover")).toBool(false);
     m_debugMode = o.value(QStringLiteral("debugMode")).toBool(false);
@@ -129,6 +130,7 @@ void ConfigStore::save() const
     o.insert(QStringLiteral("showSystemSessions"), m_showSystemSessions);
     o.insert(QStringLiteral("showInputDevices"), m_showInputDevices);
     o.insert(QStringLiteral("showInputApplications"), m_showInputApplications);
+    o.insert(QStringLiteral("hideDisconnectedDevices"), m_hideDisconnectedDevices);
     o.insert(QStringLiteral("showProcessStatusOnHover"), m_showProcessStatusOnHover);
     o.insert(QStringLiteral("scrollWheelVolumeOnHover"), m_scrollWheelVolumeOnHover);
     o.insert(QStringLiteral("debugMode"), m_debugMode);
@@ -231,6 +233,14 @@ void ConfigStore::setShowInputApplications(bool v)
     if (m_showInputApplications == v)
         return;
     m_showInputApplications = v;
+    emit changed();
+}
+
+void ConfigStore::setHideDisconnectedDevices(bool v)
+{
+    if (m_hideDisconnectedDevices == v)
+        return;
+    m_hideDisconnectedDevices = v;
     emit changed();
 }
 

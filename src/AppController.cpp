@@ -178,6 +178,7 @@ bool AppController::init()
     m_showSystemSessions = m_config->showSystemSessions();
     m_showInputDevices = m_config->showInputDevices();
     m_showInputApplications = m_config->showInputApplications();
+    m_hideDisconnectedDevices = m_config->hideDisconnectedDevices();
     m_showProcessStatusOnHover = m_config->showProcessStatusOnHover();
     m_scrollWheelVolumeOnHover = m_config->scrollWheelVolumeOnHover();
     m_startWithWindows = m_config->startWithWindows();
@@ -680,6 +681,16 @@ void AppController::setShowInputApplications(bool v)
         m_config->setShowInputApplications(m_showInputApplications);
     emit showInputApplicationsChanged();
     requestRelayout();
+}
+
+void AppController::setHideDisconnectedDevices(bool v)
+{
+    if (m_hideDisconnectedDevices == v)
+        return;
+    m_hideDisconnectedDevices = v;
+    if (m_config)
+        m_config->setHideDisconnectedDevices(m_hideDisconnectedDevices);
+    emit hideDisconnectedDevicesChanged();
 }
 
 void AppController::openAppFolder()
